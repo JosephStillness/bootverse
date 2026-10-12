@@ -1,40 +1,74 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowUpRightIcon, SoccerBallIcon } from "./icons";
+import { ArrowUpRightIcon, ListIcon, SoccerBallIcon } from "./icons";
+import { Sheet, SheetClose } from "./ui/sheet";
+import { Button, buttonVariants } from "./ui/button";
 
+const links = [
+  { href: "/", label: "Home" },
+  { href: "/boots", label: "Explore Boots" },
+  { href: "/#about", label: "About BootVerse" },
+];
 export function Navbar() {
   const pathname = usePathname();
   return (
     <header className="site-header">
-      <div className="shell flex h-[76px] items-center justify-between gap-4">
+      <div className="shell header-inner">
         <Link href="/" className="brand" aria-label="BootVerse home">
-          <SoccerBallIcon size={28} weight="duotone" aria-hidden="true" />
-          Boot<span>Verse</span>
-          <span className="brand-period">.</span>
+          <SoccerBallIcon size={25} weight="bold" aria-hidden="true" />
+          <span>BootVerse</span>
         </Link>
-        <nav
-          aria-label="Main navigation"
-          className="flex items-center gap-2 md:gap-7"
-        >
+        <nav aria-label="Main navigation" className="desktop-nav">
           <Link
             href="/"
-            className="nav-link home-link"
+            className="nav-link"
             aria-current={pathname === "/" ? "page" : undefined}
           >
             Home
           </Link>
-          <Link
-            href="/boots"
-            className="nav-link"
-            aria-current={pathname.startsWith("/boots") ? "page" : undefined}
-          >
-            Catalogue <ArrowUpRightIcon aria-hidden="true" />
-          </Link>
           <Link href="/#about" className="nav-link">
             About
           </Link>
+          <Link
+            href="/boots"
+            className={buttonVariants({ variant: "default" })}
+            aria-current={pathname.startsWith("/boots") ? "page" : undefined}
+          >
+            Explore Boots <ArrowUpRightIcon aria-hidden="true" />
+          </Link>
         </nav>
+        <div className="mobile-nav">
+          <Sheet
+            title="Menu"
+            description="Explore the BootVerse catalogue."
+            trigger={
+              <Button variant="outline" size="icon" aria-label="Open menu">
+                <ListIcon size={22} aria-hidden="true" />
+              </Button>
+            }
+          >
+            <nav aria-label="Mobile navigation" className="mobile-links">
+              {links.map((link) => (
+                <SheetClose
+                  key={link.href}
+                  nativeButton={false}
+                  role="link"
+                  render={
+                    <Link href={link.href} className="mobile-nav-link">
+                      {link.label}
+                      <ArrowUpRightIcon size={20} aria-hidden="true" />
+                    </Link>
+                  }
+                />
+              ))}
+            </nav>
+            <p className="mt-8 text-sm text-muted-foreground">
+              Football boots, clearly explained. Our first collection contains
+              eight unverified samples.
+            </p>
+          </Sheet>
+        </div>
       </div>
     </header>
   );

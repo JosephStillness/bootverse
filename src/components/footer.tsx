@@ -1,31 +1,34 @@
 import Link from "next/link";
-import { SoccerBallIcon, ArrowUpRightIcon } from "./icons";
+import { ArrowUpRightIcon, SoccerBallIcon } from "./icons";
 export function Footer() {
   return (
     <footer className="site-footer">
       <div className="shell">
-        <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
+        <div className="footer-top">
           <div>
-            <Link href="/" className="brand">
-              <SoccerBallIcon size={25} aria-hidden="true" />
-              Boot<span>Verse</span>.
+            <Link href="/" className="brand" aria-label="BootVerse home">
+              <SoccerBallIcon size={25} weight="bold" aria-hidden="true" />
+              <span>BootVerse</span>
             </Link>
-            <p className="mt-3 text-sm text-muted-foreground">
-              For the love of the game. And the boots.
+            <p className="mt-4 max-w-sm text-sm text-muted-foreground">
+              A closer look at the boots behind the game.
             </p>
           </div>
-          <nav aria-label="Footer navigation" className="flex gap-6">
-            <Link className="nav-link" href="/boots">
-              Catalogue <ArrowUpRightIcon aria-hidden="true" />
+          <nav aria-label="Footer navigation" className="footer-links">
+            <Link href="/boots" className="nav-link">
+              Explore Boots <ArrowUpRightIcon aria-hidden="true" />
             </Link>
-            <Link className="nav-link" href="/#about">
+            <Link href="/#about" className="nav-link">
               About BootVerse
+            </Link>
+            <Link href="/#surfaces" className="nav-link">
+              Playing surfaces
             </Link>
           </nav>
         </div>
         <div className="footer-bottom">
           <span>© 2026 BootVerse</span>
-          <span>Sample catalogue. No verified product claims.</span>
+          <span>Sample data. Product details are unverified.</span>
         </div>
       </div>
     </footer>

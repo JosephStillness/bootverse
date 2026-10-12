@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { boots } from "./data";
-import { defaultFilters, filterBoots, parseFilters } from "./catalogue";
+import {
+  defaultFilters,
+  filterBoots,
+  parseFilters,
+  catalogueReturnPath,
+} from "./catalogue";
 
 describe("catalogue filtering", () => {
   it("shows all eight entries by default without modifying the source", () => {
@@ -73,5 +78,32 @@ describe("catalogue filtering", () => {
     expect(
       filterBoots(boots, parseFilters(new URLSearchParams("brand=invalid"))),
     ).toEqual([]);
+  });
+});
+
+describe("catalogue navigation and search labels", () => {
+  it.each([
+    ["firm ground", 3],
+    ["artificial grass", 2],
+    ["turf", 1],
+  ])("searches full surface label %s", (query, count) => {
+    expect(filterBoots(boots, { ...defaultFilters, query })).toHaveLength(
+      count,
+    );
+  });
+  it("preserves catalogue query state in a safe return link", () => {
+    expect(catalogueReturnPath("/boots?brand=nike&surface=FG")).toBe(
+      "/boots?brand=nike&surface=FG",
+    );
+  });
+  it.each([
+    null,
+    "https://example.com/boots",
+    "//example.com/boots",
+    "javascript:alert(1)",
+    "/boots/other",
+    "/",
+  ])("rejects unsafe return path %s", (value) => {
+    expect(catalogueReturnPath(value)).toBe("/boots");
   });
 });

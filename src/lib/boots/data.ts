@@ -153,11 +153,6 @@ export const boots: CatalogueBoot[] = bootData.entries.map((entry) => {
   const colorway = bootData.colorways.find((c) => c.id === entry.colorwayId)!;
   return { ...entry, variant, tier, generation, family, brand, colorway };
 });
-export const surfaceLabels = {
-  FG: "Firm ground",
-  AG: "Artificial grass",
-  SG: "Soft ground",
-  TF: "Turf",
-};
+export { surfaceLabels } from "./labels";
 export const sampleDisclaimer =
   "All 8 entries are sample configurations. Names, tiers, surfaces, and colorways are illustrative and unverified. Artwork does not depict the listed products.";

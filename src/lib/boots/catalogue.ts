@@ -1,3 +1,4 @@
+import { surfaceLabels } from "./labels";
 import type { CatalogueBoot } from "./types";
 export const sorts = ["featured", "name-asc", "name-desc", "brand"] as const;
 export type Sort = (typeof sorts)[number];
@@ -40,6 +41,9 @@ export function filterBoots(
       boot.generation.name,
       boot.tier.name,
       boot.variant.surface ?? "unknown",
+      boot.variant.surface
+        ? surfaceLabels[boot.variant.surface]
+        : "unknown surface",
       boot.colorway.name,
     ]
       .join(" ")
@@ -66,4 +70,17 @@ export function filterBoots(
         name(a).localeCompare(name(b)),
     );
   return result;
+}
+
+/** Only allow catalogue URLs; never turn an untrusted query into an external link. */
+export function catalogueReturnPath(value: string | null): string {
+  if (!value || value.length > 2000) return "/boots";
+  try {
+    const url = new URL(value, "https://bootverse.local");
+    return url.origin === "https://bootverse.local" && url.pathname === "/boots"
+      ? url.pathname + url.search
+      : "/boots";
+  } catch {
+    return "/boots";
+  }
 }

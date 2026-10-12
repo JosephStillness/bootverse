@@ -15,9 +15,11 @@ Open http://localhost:3000. For a production preview, run `npm run build` follow
 
 ## Included
 
-- Home, navbar, footer, catalogue, and eight boot detail pages.
+- Light Geist-based Home, navbar, footer, catalogue, and eight boot detail pages.
+- Functional brand/surface discovery links, desktop filter sidebar, and accessible mobile navigation/filter drawers.
 - Search plus brand, product silo, tier, and outsole surface filters; name/brand sorting.
-- Shareable URL state and browser back/forward support.
+- Shareable URL state, browser back/forward support, and catalogue return context from details.
+- Initial query-aware catalogue results rendered on the server.
 - Loading skeletons, empty results with reset, error retry, and 404 handling.
 - Keyboard accessible controls, visible focus, skip link, reduced motion support, responsive layouts, and locally bundled fonts/artwork.
 - Unit tests for filtering, sorting, query parsing, and fixture identity validation.
@@ -52,4 +54,6 @@ npm run build
 
 `npm run test:watch` runs the unit tests interactively.
 
-Validation: typecheck, lint, 17 unit tests, and production build pass. Browser checks cover mobile/desktop layouts, combined filters, search, empty-state reset, and detail navigation. `npm audit --omit=dev` reports zero vulnerabilities. Full audit reports five high-severity findings in ESLint's transitive glob dependencies; its proposed fix downgrades the Next.js lint configuration, so that incompatible fix was not applied.
+Validation: typecheck, lint, 27 unit tests, and production build pass. Browser checks cover mobile/desktop layouts, combined filters, search, empty-state reset, and detail navigation. `npm audit --omit=dev` reports zero vulnerabilities. Full audit reports five high-severity findings in ESLint's transitive glob dependencies; its proposed fix downgrades the Next.js lint configuration, so that incompatible fix was not applied.
+
+The redesign tokens, components, responsive rules, and scope are documented in [docs/design-system.md](docs/design-system.md).

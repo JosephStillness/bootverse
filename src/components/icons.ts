@@ -6,7 +6,7 @@ export {
   SlidersHorizontalIcon,
   SoccerBallIcon,
   XIcon,
-  CheckCircleIcon,
+  ListIcon,
   InfoIcon,
   StackIcon,
 } from "@phosphor-icons/react/dist/ssr";

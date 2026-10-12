@@ -1,16 +1,11 @@
 import { InfoIcon } from "./icons";
-import { sampleDisclaimer } from "@/lib/boots/data";
 export function SampleNotice() {
   return (
     <aside className="sample-notice">
-      <InfoIcon
-        size={21}
-        className="shrink-0 text-primary"
-        aria-hidden="true"
-      />
+      <InfoIcon size={19} aria-hidden="true" />
       <p>
-        <strong className="text-foreground">A catalogue in the making.</strong>{" "}
-        {sampleDisclaimer}
+        <strong>Sample catalogue.</strong> All configurations are unverified.
+        Concept artwork does not depict the listed boots.
       </p>
     </aside>
   );

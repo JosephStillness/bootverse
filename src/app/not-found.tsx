@@ -11,7 +11,7 @@ export default function NotFound() {
           collection instead.
         </p>
         <Link href="/boots" className={cn(buttonVariants(), "h-12 px-6")}>
-          Explore catalogue
+          Explore Boots
         </Link>
       </div>
     </div>

@@ -2,25 +2,31 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 export function BootArt({
   hero = false,
+  eager = false,
+  sizes,
   className,
 }: {
   hero?: boolean;
+  eager?: boolean;
+  sizes?: string;
   className?: string;
 }) {
+  const loadEarly = hero || eager;
   return (
     <div className={cn("boot-art", hero && "hero-art", className)}>
       <Image
         src="/images/boot-concept.png"
-        alt="Unbranded lime football boot concept illustration, not a photograph of a listed product"
+        alt="Unbranded football boot concept artwork, not a photograph of this sample product"
         fill
         sizes={
-          hero
-            ? "(max-width: 768px) 100vw, 60vw"
-            : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          sizes ??
+          (hero
+            ? "(max-width: 767px) 100vw, 55vw"
+            : "(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33vw")
         }
-        priority={hero}
-        loading={hero ? "eager" : "lazy"}
-        className="object-cover"
+        loading={loadEarly ? "eager" : "lazy"}
+        fetchPriority={loadEarly ? "high" : "auto"}
+        className="object-contain"
       />
     </div>
   );

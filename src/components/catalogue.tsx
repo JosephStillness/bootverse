@@ -1,27 +1,94 @@
 "use client";
 import { useSearchParams } from "next/navigation";
-import { bootData, surfaceLabels } from "@/lib/boots/data";
 import type { CatalogueBoot } from "@/lib/boots/types";
+import { surfaceLabels } from "@/lib/boots/labels";
 import {
   filterBoots,
   parseFilters,
-  defaultFilters,
   type CatalogueFilters,
 } from "@/lib/boots/catalogue";
 import { BootCard } from "./boot-card";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { MagnifyingGlassIcon, XIcon, SlidersHorizontalIcon } from "./icons";
+import { Sheet, SheetClose } from "./ui/sheet";
+import { MagnifyingGlassIcon, SlidersHorizontalIcon, XIcon } from "./icons";
+
+type FilterKey = "brand" | "silo" | "tier" | "surface";
+type FilterOptions = Record<FilterKey, { value: string; label: string }[]>;
+const labels: Record<FilterKey, string> = {
+  brand: "Brand",
+  silo: "Product silo",
+  tier: "Tier",
+  surface: "Playing surface",
+};
+const keys: FilterKey[] = ["brand", "silo", "tier", "surface"];
+
+function FilterFields({
+  options,
+  filters,
+  update,
+  prefix,
+}: {
+  options: FilterOptions;
+  filters: CatalogueFilters;
+  update: (key: keyof CatalogueFilters, value: string) => void;
+  prefix: string;
+}) {
+  return (
+    <div className="filter-fields">
+      {keys.map((key) => (
+        <div key={key}>
+          <label className="field-label" htmlFor={`${prefix}-${key}`}>
+            {labels[key]}
+          </label>
+          <select
+            className="select-input"
+            id={`${prefix}-${key}`}
+            value={filters[key]}
+            onChange={(event) => update(key, event.target.value)}
+          >
+            <option value="">
+              {key === "brand"
+                ? "All brands"
+                : key === "silo"
+                  ? "All silos"
+                  : key === "tier"
+                    ? "All tiers"
+                    : "All surfaces"}
+            </option>
+            {filters[key] &&
+              !options[key].some((option) => option.value === filters[key]) && (
+                <option value={filters[key]}>Unavailable selection</option>
+              )}
+            {options[key].map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function Catalogue({ boots }: { boots: CatalogueBoot[] }) {
   const searchParams = useSearchParams();
   const filters = parseFilters(new URLSearchParams(searchParams.toString()));
   const results = filterBoots(boots, filters);
-  const tiers = [...new Set(bootData.tiers.map((t) => t.name))];
-  const options = {
-    brand: bootData.brands.map((b) => ({ value: b.id, label: b.name })),
-    silo: bootData.families.map((f) => ({ value: f.id, label: f.name })),
-    tier: tiers.map((t) => ({ value: t, label: t })),
+  const unique = (values: { value: string; label: string }[]) => [
+    ...new Map(values.map((value) => [value.value, value])).values(),
+  ];
+  const options: FilterOptions = {
+    brand: unique(
+      boots.map((boot) => ({ value: boot.brand.id, label: boot.brand.name })),
+    ),
+    silo: unique(
+      boots.map((boot) => ({ value: boot.family.id, label: boot.family.name })),
+    ),
+    tier: unique(
+      boots.map((boot) => ({ value: boot.tier.name, label: boot.tier.name })),
+    ),
     surface: [
       ...Object.entries(surfaceLabels).map(([value, label]) => ({
         value,
@@ -29,12 +96,6 @@ export function Catalogue({ boots }: { boots: CatalogueBoot[] }) {
       })),
       { value: "unknown", label: "Unknown surface" },
     ],
-  };
-  const labels = {
-    brand: "Brand",
-    silo: "Product silo",
-    tier: "Tier",
-    surface: "Outsole surface",
   };
   function update(key: keyof CatalogueFilters, value: string) {
     const params = new URLSearchParams(window.location.search);
@@ -49,150 +110,167 @@ export function Catalogue({ boots }: { boots: CatalogueBoot[] }) {
   function reset() {
     window.history.pushState(null, "", "/boots");
   }
-  const active = (Object.keys(options) as (keyof typeof options)[]).filter(
-    (key) => filters[key],
-  );
-  const hasFilters =
-    active.length > 0 || filters.query !== defaultFilters.query;
+  const active = keys.filter((key) => filters[key]);
+  const hasFilters = active.length > 0 || !!filters.query;
+  const returnTo = searchParams.size ? `/boots?${searchParams}` : "/boots";
   return (
     <>
-      <div className="catalogue-controls">
-        <div className="flex items-end gap-4">
-          <div className="min-w-0 flex-1">
-            <label htmlFor="boot-search" className="field-label">
-              Search the catalogue
-            </label>
-            <div className="relative">
+      <div className="catalogue-search">
+        <label className="field-label" htmlFor="boot-search">
+          Search boots
+        </label>
+        <div className="search-input-wrap">
+          <MagnifyingGlassIcon size={21} aria-hidden="true" />
+          <Input
+            className="pl-12"
+            id="boot-search"
+            type="search"
+            value={filters.query}
+            onChange={(event) => update("query", event.target.value)}
+            placeholder="Brand, model, tier, or colorway"
+          />
+        </div>
+      </div>
+      <div className="catalogue-layout">
+        <aside className="filter-sidebar" aria-label="Catalogue filters">
+          <div className="filter-heading">
+            <h2>Filters</h2>
+            {hasFilters && (
+              <Button variant="ghost" onClick={reset}>
+                Reset
+              </Button>
+            )}
+          </div>
+          <FilterFields
+            prefix="desktop"
+            options={options}
+            filters={filters}
+            update={update}
+          />
+          <p className="filter-help">
+            Surface and tier assignments are illustrative in this sample
+            catalogue.
+          </p>
+        </aside>
+        <div className="catalogue-results">
+          <div className="results-toolbar">
+            <p role="status" aria-live="polite">
+              <strong>{results.length}</strong>{" "}
+              {results.length === 1 ? "boot" : "boots"}
+              <span className="text-muted-foreground">
+                {" "}
+                / {boots.length} samples
+              </span>
+            </p>
+            <div className="results-actions">
+              <div className="mobile-filter-trigger">
+                <Sheet
+                  title="Filters"
+                  description="Refine the sample catalogue. Changes apply immediately."
+                  trigger={
+                    <Button variant="outline">
+                      <SlidersHorizontalIcon size={18} aria-hidden="true" />
+                      Filters{active.length > 0 ? ` (${active.length})` : ""}
+                    </Button>
+                  }
+                  footer={
+                    <SheetClose
+                      render={
+                        <Button className="w-full">
+                          Show {results.length}{" "}
+                          {results.length === 1 ? "boot" : "boots"}
+                        </Button>
+                      }
+                    />
+                  }
+                >
+                  <FilterFields
+                    prefix="mobile"
+                    options={options}
+                    filters={filters}
+                    update={update}
+                  />
+                  {hasFilters && (
+                    <Button
+                      variant="outline"
+                      onClick={reset}
+                      className="mt-6 w-full"
+                    >
+                      Clear filters
+                    </Button>
+                  )}
+                </Sheet>
+              </div>
+              <div className="sort-field">
+                <label htmlFor="sort" className="field-label">
+                  Sort by
+                </label>
+                <select
+                  id="sort"
+                  className="select-input"
+                  value={filters.sort}
+                  onChange={(event) => update("sort", event.target.value)}
+                >
+                  <option value="featured">Catalogue order</option>
+                  <option value="name-asc">Name: A to Z</option>
+                  <option value="name-desc">Name: Z to A</option>
+                  <option value="brand">Brand: A to Z</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          {hasFilters && (
+            <div className="active-filters">
+              {active.map((key) => {
+                const label =
+                  options[key].find((option) => option.value === filters[key])
+                    ?.label ?? `Unavailable ${labels[key].toLowerCase()}`;
+                return (
+                  <Button
+                    key={key}
+                    variant="secondary"
+                    onClick={() => update(key, "")}
+                    aria-label={`${label}, remove ${labels[key].toLowerCase()} filter`}
+                  >
+                    <span className="truncate">{label}</span>
+                    <XIcon aria-hidden="true" />
+                  </Button>
+                );
+              })}
+              <Button variant="ghost" onClick={reset}>
+                Clear filters
+              </Button>
+            </div>
+          )}
+          <h2 className="sr-only">Catalogue results</h2>
+          {results.length ? (
+            <div className="boot-grid">
+              {results.map((boot) => (
+                <BootCard
+                  key={boot.id}
+                  boot={boot}
+                  returnTo={returnTo}
+                  sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 25vw"
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state">
               <MagnifyingGlassIcon
-                size={21}
-                className="pointer-events-none absolute top-3 left-3 text-muted-foreground"
+                size={32}
+                className="mx-auto"
                 aria-hidden="true"
               />
-              <Input
-                id="boot-search"
-                type="search"
-                value={filters.query}
-                onChange={(e) => update("query", e.target.value)}
-                placeholder="Search brands, silos, tiers, or colorways…"
-                className="h-[46px] rounded-md bg-background pl-11 text-base placeholder:text-muted-foreground"
-              />
+              <h2>No boots found.</h2>
+              <p>
+                Try a different search or clear your filters to explore the
+                sample collection.
+              </p>
+              <Button onClick={reset}>Clear filters</Button>
             </div>
-          </div>
-          <SlidersHorizontalIcon
-            size={24}
-            className="mb-3 hidden text-muted-foreground sm:block"
-            aria-hidden="true"
-          />
-        </div>
-        <div className="filter-grid">
-          {(Object.keys(options) as (keyof typeof options)[]).map((key) => (
-            <div key={key}>
-              <label className="field-label" htmlFor={`filter-${key}`}>
-                {labels[key]}
-              </label>
-              <select
-                id={`filter-${key}`}
-                className="select-input"
-                value={filters[key]}
-                onChange={(e) => update(key, e.target.value)}
-              >
-                <option value="">
-                  All{" "}
-                  {key === "silo"
-                    ? "silos"
-                    : key === "surface"
-                      ? "surfaces"
-                      : `${key}s`}
-                </option>
-                {filters[key] &&
-                  !options[key].some(
-                    (option) => option.value === filters[key],
-                  ) && (
-                    <option value={filters[key]}>
-                      Unavailable: {filters[key]}
-                    </option>
-                  )}
-                {options[key].map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ))}
-        </div>
-        {hasFilters && (
-          <div className="active-filters">
-            {active.map((key) => (
-              <Button
-                key={key}
-                variant="secondary"
-                className="h-11 rounded-md"
-                onClick={() => update(key, "")}
-                aria-label={`Remove ${labels[key]} filter`}
-              >
-                {options[key].find((option) => option.value === filters[key])
-                  ?.label ?? filters[key]}
-                <XIcon aria-hidden="true" />
-              </Button>
-            ))}
-            <Button
-              variant="ghost"
-              className="h-11 text-primary"
-              onClick={reset}
-            >
-              Clear filters
-            </Button>
-          </div>
-        )}
-      </div>
-      <div className="results-toolbar">
-        <p role="status" aria-live="polite">
-          <strong>{results.length}</strong> of {boots.length} sample entries
-        </p>
-        <div className="flex items-center gap-3">
-          <label
-            htmlFor="sort"
-            className="whitespace-nowrap text-muted-foreground"
-          >
-            Sort by
-          </label>
-          <select
-            id="sort"
-            className="select-input min-w-[175px]"
-            value={filters.sort}
-            onChange={(e) => update("sort", e.target.value)}
-          >
-            <option value="featured">Catalogue order</option>
-            <option value="name-asc">Name: A to Z</option>
-            <option value="name-desc">Name: Z to A</option>
-            <option value="brand">Brand: A to Z</option>
-          </select>
+          )}
         </div>
       </div>
-      {results.length ? (
-        <div className="boot-grid">
-          {results.map((boot) => (
-            <BootCard key={boot.id} boot={boot} />
-          ))}
-        </div>
-      ) : (
-        <div className="empty-state">
-          <MagnifyingGlassIcon
-            size={40}
-            className="mx-auto mb-5 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <h2>No boots found.</h2>
-          <p>
-            Try another search or clear your filters to explore all eight sample
-            entries.
-          </p>
-          <Button onClick={reset} className="h-12 px-6">
-            Clear filters
-          </Button>
-        </div>
-      )}
     </>
   );
 }
