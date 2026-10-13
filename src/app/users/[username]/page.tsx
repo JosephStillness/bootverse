@@ -6,7 +6,9 @@ import { getDb } from "@/lib/db";
 import { publicProfileSelect } from "@/lib/accounts/service";
 import { usernameSchema } from "@/lib/accounts/validation";
 import { Avatar } from "@/components/accounts/avatar";
-import { buttonVariants } from "@/components/ui/button";
+import { listPosts } from "@/lib/community/service";
+import { feedSchema } from "@/lib/community/validation";
+import { PostCard } from "@/components/community/post-card";
 export const metadata: Metadata = {
   title: "Member profile",
   robots: { index: false, follow: true },
@@ -37,6 +39,9 @@ export default async function UserProfile({
     select: publicProfileSelect,
   });
   if (!profile) notFound();
+  const activity = await listPosts(
+    feedSchema.parse({ author: profile.username }),
+  );
   return (
     <div className="shell account-page">
       <section className="account-panel public-profile">
@@ -53,19 +58,34 @@ export default async function UserProfile({
           })}
         </p>
         {profile.bio && <p className="profile-bio">{profile.bio}</p>}
-        <div className="account-security">
-          <h2>Your football boot journey starts here.</h2>
-          <p>
-            Discussions, reviews and activity history will appear when those
-            community features launch.
+        <section
+          className="profile-posts"
+          aria-labelledby="member-posts-heading"
+        >
+          <h2 id="member-posts-heading">
+            Public discussions ({activity.total})
+          </h2>
+          {activity.posts.length ? (
+            activity.posts
+              .slice(0, 5)
+              .map((post) => <PostCard key={post.id} post={post} />)
+          ) : (
+            <p className="field-help">
+              This member has not published any discussions yet.
+            </p>
+          )}
+          {activity.total > 5 && (
+            <Link
+              href={`/community?author=${encodeURIComponent(profile.username)}`}
+              className="text-link"
+            >
+              View all discussions
+            </Link>
+          )}
+          <p className="field-help">
+            Review history will be available when structured reviews launch.
           </p>
-          <Link
-            href="/boots"
-            className={buttonVariants({ variant: "outline" })}
-          >
-            Explore boots
-          </Link>
-        </div>
+        </section>
       </section>
     </div>
   );

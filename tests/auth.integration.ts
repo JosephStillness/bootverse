@@ -7,10 +7,11 @@ import { once } from "node:events";
 import { createServer } from "node:net";
 import { SMTPServer } from "smtp-server";
 import pg from "pg";
+import { communityTests } from "./community.integration";
 
 // Disposable local PostgreSQL database; never writes fixtures to the app database.
 test(
-  "Sprint 2.1 real HTTP, PostgreSQL and SMTP lifecycle",
+  "Sprint 2.1/2.2 real HTTP, PostgreSQL and SMTP lifecycle",
   { timeout: 180000 },
   async (t) => {
     assert.ok(
@@ -91,6 +92,19 @@ test(
         migrationCode,
         0,
         "Migration must apply cleanly to an empty database.",
+      );
+      const catalogue = spawn(
+        process.execPath,
+        ["--import", "tsx", "scripts/import-catalogue.mts"],
+        { env, stdio: "pipe" },
+      );
+      catalogue.stdout?.resume();
+      catalogue.stderr?.resume();
+      const [catalogueCode] = await once(catalogue, "exit");
+      assert.equal(
+        catalogueCode,
+        0,
+        "Catalogue identities must import cleanly.",
       );
       await new Promise<void>((resolve) =>
         smtp.listen(smtpPort, "127.0.0.1", resolve),
@@ -336,6 +350,7 @@ test(
           );
         },
       );
+      await communityTests(t, { alice, bob, db, base, aliceId, bobId });
       await t.test(
         "expired sessions and concurrent unique-username updates",
         async () => {
@@ -502,23 +517,71 @@ test(
           );
         },
       );
-      await t.test("catalogue remains usable when account services are unconfigured", async () => {
-        const previewPort = await unusedPort();
-        const previewBase = `http://localhost:${previewPort}`;
-        const preview = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "--port", String(previewPort)], {
-          env: { ...env, DATABASE_URL: "", AUTH_SECRET: "", AUTH_URL: "", EMAIL_SERVER: "", EMAIL_FROM: "" }, stdio: "pipe",
-        });
-        preview.stdout?.resume(); preview.stderr?.resume();
-        try {
-          for (let i = 0; i < 100; i++) { try { if ((await fetch(`${previewBase}/login`)).ok) break; } catch {} await pause(); }
-          const html = await (await fetch(`${previewBase}/login`)).text();
-          assert.ok(html.includes("Account setup is pending"));
-          assert.equal((await fetch(`${previewBase}/api/auth/session`)).status, 503);
-          assert.equal((await fetch(`${previewBase}/account`, { redirect: "manual" })).status, 307);
-          assert.equal((await fetch(`${previewBase}/boots`)).status, 200);
-        } finally { preview.kill("SIGTERM"); await once(preview, "exit"); }
-      });
-      assert.ok(!appOutput.includes("AdapterError"), "Revoked sessions should not raise adapter errors on logout.");
+      await t.test(
+        "catalogue remains usable when account services are unconfigured",
+        async () => {
+          const previewPort = await unusedPort();
+          const previewBase = `http://localhost:${previewPort}`;
+          const preview = spawn(
+            process.execPath,
+            [
+              "node_modules/next/dist/bin/next",
+              "start",
+              "--port",
+              String(previewPort),
+            ],
+            {
+              env: {
+                ...env,
+                DATABASE_URL: "",
+                AUTH_SECRET: "",
+                AUTH_URL: "",
+                EMAIL_SERVER: "",
+                EMAIL_FROM: "",
+              },
+              stdio: "pipe",
+            },
+          );
+          preview.stdout?.resume();
+          preview.stderr?.resume();
+          try {
+            for (let i = 0; i < 100; i++) {
+              try {
+                if ((await fetch(`${previewBase}/login`)).ok) break;
+              } catch {}
+              await pause();
+            }
+            const html = await (await fetch(`${previewBase}/login`)).text();
+            assert.ok(html.includes("Account setup is pending"));
+            assert.equal(
+              (await fetch(`${previewBase}/api/auth/session`)).status,
+              503,
+            );
+            assert.equal(
+              (await fetch(`${previewBase}/account`, { redirect: "manual" }))
+                .status,
+              307,
+            );
+            assert.equal((await fetch(`${previewBase}/boots`)).status, 200);
+            assert.ok(
+              (await (await fetch(`${previewBase}/community`)).text()).includes(
+                "Community setup is pending",
+              ),
+            );
+            assert.equal(
+              (await fetch(`${previewBase}/api/community/posts`)).status,
+              503,
+            );
+          } finally {
+            preview.kill("SIGTERM");
+            await once(preview, "exit");
+          }
+        },
+      );
+      assert.ok(
+        !appOutput.includes("AdapterError"),
+        "Revoked sessions should not raise adapter errors on logout.",
+      );
       await t.test("Phase 1 routes and catalogue still render", async () => {
         assert.equal((await fetch(`${base}/`)).status, 200);
         const catalogue = await (

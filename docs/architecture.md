@@ -14,7 +14,7 @@ All eight entries are fictional sample configurations using familiar brand and s
 - A client catalogue component owns search, filters, and sort, persisted in shareable URL query parameters. Its options come from the supplied records. A validated return URL preserves catalogue context when opening details.
 - Typed fixtures and validation live in `src/lib/boots`; UI consumes joined catalogue records.
 - Pure filtering and validation functions have unit tests. Runtime fixture validation fails loudly for broken identities.
-- Sprint 2.1 adds PostgreSQL/Prisma, Auth.js verified-email accounts, database sessions, public profiles and owner/role guards. See `docs/phase-2-foundation.md` for setup and boundaries. Community, reviews, recommendations, analytics and cloud services remain unimplemented.
+- Sprint 2.1 adds PostgreSQL/Prisma, Auth.js verified-email accounts, database sessions, public profiles and owner/role guards. See `docs/phase-2-foundation.md` for setup and boundaries. Sprint 2.2 adds server-rendered community posts/feed and normalized database catalogue identities for FK-backed links; Phase 1 catalogue rendering remains fixture-backed. Reviews, recommendations, analytics and cloud services remain unimplemented. See `docs/phase-2-community.md`.
 
 ## Catalogue integration with PostgreSQL and Prisma
 

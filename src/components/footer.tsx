@@ -18,6 +18,9 @@ export function Footer() {
             <Link href="/boots" className="nav-link">
               Explore Boots <ArrowUpRightIcon aria-hidden="true" />
             </Link>
+            <Link href="/community">
+              Community <ArrowUpRightIcon size={16} aria-hidden="true" />
+            </Link>
             <Link href="/#about" className="nav-link">
               About BootVerse
             </Link>

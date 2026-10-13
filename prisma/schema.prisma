@@ -30,6 +30,7 @@ model User {
   updatedAt     DateTime     @updatedAt @db.Timestamptz(3)
   profile       UserProfile?
   sessions      Session[]
+  posts         Post[]
 }
 
 model UserProfile {
@@ -70,4 +71,126 @@ model RateLimit {
   expiresAt DateTime @db.Timestamptz(3)
 
   @@index([expiresAt])
+}
+
+// Catalogue identities mirror the validated Phase 1 samples, not technical claims.
+model BootBrand {
+  id       String       @id
+  name     String
+  families BootFamily[]
+}
+
+model BootFamily {
+  id          String           @id
+  brandId     String
+  name        String
+  brand       BootBrand        @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  generations BootGeneration[]
+
+  @@index([brandId])
+}
+
+model BootGeneration {
+  id        String         @id
+  familyId  String
+  name      String
+  family    BootFamily     @relation(fields: [familyId], references: [id], onDelete: Restrict)
+  tiers     BootTier[]
+  colorways BootColorway[]
+
+  @@index([familyId])
+}
+
+model BootTier {
+  id           String         @id
+  generationId String
+  name         String
+  generation   BootGeneration @relation(fields: [generationId], references: [id], onDelete: Restrict)
+  variants     BootVariant[]
+
+  @@index([generationId])
+}
+
+model BootVariant {
+  id          String           @id
+  tierModelId String
+  surface     String?          @db.VarChar(2)
+  tier        BootTier         @relation(fields: [tierModelId], references: [id], onDelete: Restrict)
+  entries     CatalogueEntry[]
+
+  @@index([tierModelId])
+}
+
+model BootColorway {
+  id           String           @id
+  generationId String
+  name         String
+  swatch       String           @db.VarChar(7)
+  generation   BootGeneration   @relation(fields: [generationId], references: [id], onDelete: Restrict)
+  entries      CatalogueEntry[]
+
+  @@index([generationId])
+}
+
+model CatalogueEntry {
+  id               String       @id
+  slug             String       @unique
+  outsoleVariantId String
+  colorwayId       String
+  sample           Boolean      @default(true)
+  variant          BootVariant  @relation(fields: [outsoleVariantId], references: [id], onDelete: Restrict)
+  colorway         BootColorway @relation(fields: [colorwayId], references: [id], onDelete: Restrict)
+  posts            Post[]
+
+  @@unique([outsoleVariantId, colorwayId])
+  @@index([colorwayId])
+}
+
+model PostCategory {
+  id    String @id @db.VarChar(30)
+  name  String @db.VarChar(50)
+  posts Post[]
+}
+
+enum PostStatus {
+  PUBLISHED
+  HIDDEN
+}
+
+model Post {
+  id          String          @id @default(cuid())
+  slug        String          @unique @db.VarChar(120)
+  title       String          @db.VarChar(160)
+  content     String          @db.Text
+  authorId    String
+  categoryId  String
+  bootEntryId String?
+  status      PostStatus      @default(PUBLISHED)
+  version     Int             @default(1)
+  createdAt   DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime        @updatedAt @db.Timestamptz(3)
+  author      User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  category    PostCategory    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  boot        CatalogueEntry? @relation(fields: [bootEntryId], references: [id], onDelete: Restrict)
+  tags        PostTag[]
+
+  @@index([status, createdAt, id])
+  @@index([authorId, status, createdAt])
+  @@index([categoryId, status, createdAt])
+  @@index([bootEntryId, status, createdAt])
+}
+
+model Tag {
+  name  String    @id @db.VarChar(24)
+  posts PostTag[]
+}
+
+model PostTag {
+  postId String
+  tagId  String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [name], onDelete: Restrict)
+
+  @@id([postId, tagId])
+  @@index([tagId])
 }

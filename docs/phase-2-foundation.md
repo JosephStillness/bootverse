@@ -1,3 +1,5 @@
+> Historical Sprint 2.1 report. Sprint 2.2 is now implemented; see [Community + Posts](phase-2-community.md) for current status and setup.
+
 # Phase 2 — Sprint 2.1 foundation
 
 Status: implemented and verified locally. This sprint establishes accounts, profiles and authorization. Community feeds, posts, comments, votes, boot reviews, uploads and moderation UI are not implemented yet. Phase 1 catalogue data, filters and boot pages remain unchanged. There was no previous database/auth infrastructure to replace.

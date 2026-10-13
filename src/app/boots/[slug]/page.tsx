@@ -179,6 +179,29 @@ export default async function BootDetail({
           ))}
         </dl>
       </section>
+      <section
+        className="detail-section"
+        aria-labelledby="boot-community-heading"
+      >
+        <div>
+          <h2 id="boot-community-heading">Talk about this boot.</h2>
+          <p>Find discussions linked to this exact sample configuration.</p>
+        </div>
+        <div className="account-actions">
+          <Link
+            href={`/community?boot=${encodeURIComponent(boot.id)}`}
+            className="text-link"
+          >
+            View discussions
+          </Link>
+          <Link
+            href={`/community/new?boot=${encodeURIComponent(boot.id)}`}
+            className="text-link"
+          >
+            Ask the community
+          </Link>
+        </div>
+      </section>
       <section id="fit" className="detail-section">
         <div>
           <h2>Fit & evidence</h2>

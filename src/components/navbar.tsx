@@ -8,6 +8,7 @@ import { Button, buttonVariants } from "./ui/button";
 const links = [
   { href: "/", label: "Home" },
   { href: "/boots", label: "Explore Boots" },
+  { href: "/community", label: "Community" },
   { href: "/#about", label: "About BootVerse" },
   { href: "/account", label: "My account" },
 ];
@@ -27,6 +28,15 @@ export function Navbar() {
             aria-current={pathname === "/" ? "page" : undefined}
           >
             Home
+          </Link>
+          <Link
+            href="/community"
+            className="nav-link"
+            aria-current={
+              pathname.startsWith("/community") ? "page" : undefined
+            }
+          >
+            Community
           </Link>
           <Link href="/#about" className="nav-link">
             About

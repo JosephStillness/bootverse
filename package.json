@@ -17,7 +17,8 @@
     "db:studio": "prisma studio",
     "dev:mail": "tsx scripts/dev-mail.mts",
     "db:cleanup": "tsx scripts/cleanup-auth.mts",
-    "test:integration": "tsx --test tests/auth.integration.ts"
+    "test:integration": "tsx --test tests/auth.integration.ts",
+    "db:catalogue": "tsx scripts/import-catalogue.mts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
@@ -34,6 +35,7 @@
     "pg": "^8.23.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "react-markdown": "^10.1.0",
     "server-only": "^0.0.1",
     "zod": "^4.6.7"
   },
