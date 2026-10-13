@@ -108,16 +108,19 @@ model BootTier {
   generation   BootGeneration @relation(fields: [generationId], references: [id], onDelete: Restrict)
   variants     BootVariant[]
 
+  @@unique([id, generationId])
   @@index([generationId])
 }
 
 model BootVariant {
-  id          String           @id
-  tierModelId String
-  surface     String?          @db.VarChar(2)
-  tier        BootTier         @relation(fields: [tierModelId], references: [id], onDelete: Restrict)
-  entries     CatalogueEntry[]
+  id           String           @id
+  tierModelId  String
+  generationId String
+  surface      String?          @db.VarChar(2)
+  tier         BootTier         @relation(fields: [tierModelId, generationId], references: [id, generationId], onDelete: Restrict, onUpdate: Restrict)
+  entries      CatalogueEntry[]
 
+  @@unique([id, generationId])
   @@index([tierModelId])
 }
 
@@ -129,6 +132,7 @@ model BootColorway {
   generation   BootGeneration   @relation(fields: [generationId], references: [id], onDelete: Restrict)
   entries      CatalogueEntry[]
 
+  @@unique([id, generationId])
   @@index([generationId])
 }
 
@@ -137,9 +141,10 @@ model CatalogueEntry {
   slug             String       @unique
   outsoleVariantId String
   colorwayId       String
+  generationId     String
   sample           Boolean      @default(true)
-  variant          BootVariant  @relation(fields: [outsoleVariantId], references: [id], onDelete: Restrict)
-  colorway         BootColorway @relation(fields: [colorwayId], references: [id], onDelete: Restrict)
+  variant          BootVariant  @relation(fields: [outsoleVariantId, generationId], references: [id, generationId], onDelete: Restrict, onUpdate: Restrict)
+  colorway         BootColorway @relation(fields: [colorwayId, generationId], references: [id, generationId], onDelete: Restrict, onUpdate: Restrict)
   posts            Post[]
 
   @@unique([outsoleVariantId, colorwayId])

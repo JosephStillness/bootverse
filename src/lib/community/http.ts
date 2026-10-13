@@ -52,5 +52,5 @@ export async function mutationInput(request: Request, creating = false) {
   } catch {
     throw new CommunityError(400, "Invalid JSON.");
   }
-  return { actor, input };
+  return { actor: requireActiveUser(await currentUser()), input };
 }

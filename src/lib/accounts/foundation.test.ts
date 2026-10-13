@@ -8,6 +8,7 @@ import {
 import { emailSchema, profileSchema, safeReturnPath } from "./validation";
 import { authConfigured, sameOriginRequest } from "./config";
 import { BodyTooLargeError, limitedText } from "./request";
+import { trustedClientIp } from "./request-client";
 
 const user: Principal = {
   id: "owner",
@@ -81,6 +82,42 @@ describe("profile input", () => {
   });
 });
 describe("return links and CSRF", () => {
+  it("ignores spoofable forwarded addresses unless the proxy header is configured", () => {
+    vi.stubEnv("AUTH_TRUSTED_IP_HEADER", "");
+    expect(
+      trustedClientIp(
+        new Request("http://localhost", {
+          headers: { "x-real-ip": "192.0.2.1" },
+        }),
+      ),
+    ).toBeNull();
+  });
+  it("validates and canonicalizes only the configured trusted header", () => {
+    vi.stubEnv("AUTH_TRUSTED_IP_HEADER", "x-real-ip");
+    expect(
+      trustedClientIp(
+        new Request("http://localhost", {
+          headers: { "x-real-ip": "2001:0DB8:0:0::1" },
+        }),
+      ),
+    ).toBe("[2001:db8::1]");
+    expect(() =>
+      trustedClientIp(
+        new Request("http://localhost", {
+          headers: { "x-forwarded-for": "192.0.2.1" },
+        }),
+      ),
+    ).toThrow();
+    expect(() =>
+      trustedClientIp(
+        new Request("http://localhost", {
+          headers: { "x-real-ip": "192.0.2.1,192.0.2.2" },
+        }),
+      ),
+    ).toThrow();
+    vi.stubEnv("AUTH_TRUSTED_IP_HEADER", "x-forwarded-for");
+    expect(() => trustedClientIp(new Request("http://localhost"))).toThrow();
+  });
   it.each([
     "https://evil.test",
     "//evil.test",

@@ -73,7 +73,18 @@ export function Navbar() {
                   nativeButton={false}
                   role="link"
                   render={
-                    <Link href={link.href} className="mobile-nav-link">
+                    <Link
+                      href={link.href}
+                      className="mobile-nav-link"
+                      aria-current={
+                        link.href === pathname ||
+                        (link.href !== "/" &&
+                          !link.href.includes("#") &&
+                          pathname.startsWith(`${link.href}/`))
+                          ? "page"
+                          : undefined
+                      }
+                    >
                       {link.label}
                       <ArrowUpRightIcon size={20} aria-hidden="true" />
                     </Link>

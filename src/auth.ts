@@ -40,14 +40,17 @@ export const { handlers, auth } = NextAuth(() => ({
         return false;
       if (email?.verificationRequest) {
         const perEmail = await consumeLimit(`email:${user.email}`, 3, 15 * 60);
-        const global = await consumeLimit("email:global", 60, 60 * 60);
-        if (!perEmail || !global) return false;
+        if (!perEmail) return false;
       }
       const account = await getDb().user.findUnique({
         where: { email: user.email! },
         select: { status: true },
       });
-      return !account || account.status === "ACTIVE";
+      if (account && account.status !== "ACTIVE") return false;
+      return (
+        !email?.verificationRequest ||
+        (await consumeLimit("email:global", 60, 60 * 60))
+      );
     },
     async session({ session, user }) {
       const profile = await getDb().userProfile.findUnique({

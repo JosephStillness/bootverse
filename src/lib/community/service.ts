@@ -1,5 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
+import { cache } from "react";
+import { lockedActiveUser } from "@/lib/accounts/authorization-db";
 import { getDb } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
 import {
@@ -180,13 +182,13 @@ export async function listPosts(filters: FeedFilters) {
     pages: Math.max(1, Math.ceil(total / pageSize)),
   };
 }
-export async function publicPost(slug: string) {
+export const publicPost = cache(async (slug: string) => {
   const post = await getDb().post.findFirst({
     where: { ...publicWhere, slug },
     select: postSelect,
   });
   return post ? postDTO(post) : null;
-}
+});
 export async function editablePost(slug: string, actor: Principal | null) {
   requireActiveUser(actor);
   const post = await getDb().post.findUnique({
@@ -228,8 +230,8 @@ async function tagLinks(tx: Prisma.TransactionClient, tags: string[]) {
   return tags.map((tagId) => ({ tagId }));
 }
 export async function createPost(actor: Principal | null, input: unknown) {
-  const author = requireActiveUser(actor),
-    data = postSchema.parse(input);
+  requireActiveUser(actor);
+  const data = postSchema.parse(input);
   const slug = `${
     data.title
       .toLowerCase()
@@ -240,6 +242,7 @@ export async function createPost(actor: Principal | null, input: unknown) {
       .replace(/-$/, "") || "discussion"
   }-${randomUUID().replaceAll("-", "")}`;
   return getDb().$transaction(async (tx) => {
+    const author = await lockedActiveUser(tx, actor);
     await validateBoot(tx, data.bootEntryId);
     const { tags, ...fields } = data;
     return tx.post.create({
@@ -261,12 +264,13 @@ export async function editPost(
   requireActiveUser(actor);
   const data = editPostSchema.parse(input);
   return getDb().$transaction(async (tx) => {
+    const current = await lockedActiveUser(tx, actor);
     const post = await tx.post.findUnique({
       where: { slug },
       select: { id: true, authorId: true },
     });
     if (!post) throw new CommunityError(404, "Post not found.");
-    requirePostManager(actor, post.authorId);
+    requirePostManager(current, post.authorId);
     await validateBoot(tx, data.bootEntryId);
     const { tags, version, ...fields } = data;
     const updated = await tx.post.updateMany({
@@ -294,12 +298,13 @@ export async function deletePost(
   requireActiveUser(actor);
   const { version } = deletePostSchema.parse(input);
   return getDb().$transaction(async (tx) => {
+    const current = await lockedActiveUser(tx, actor);
     const post = await tx.post.findUnique({
       where: { slug },
       select: { id: true, authorId: true },
     });
     if (!post) throw new CommunityError(404, "Post not found.");
-    requirePostManager(actor, post.authorId);
+    requirePostManager(current, post.authorId);
     const removed = await tx.post.deleteMany({
       where: { id: post.id, version },
     });

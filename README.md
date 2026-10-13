@@ -61,3 +61,5 @@ The redesign tokens, components, responsive rules, and scope are documented in [
 For accounts/community: copy `.env.example` to `.env`, configure PostgreSQL/SMTP/secret/origin, run `npm run db:deploy` and `npm run db:catalogue`, then `npm run dev`. Local email capture: `npm run dev:mail`. Run `npm run build` then `npm run test:integration` with local PostgreSQL for the isolated auth lifecycle tests.
 
 Community routes, API, migration, validation and remaining boundaries: [Sprint 2.2 notes](docs/phase-2-community.md). Current verification includes 83 unit tests and 18 real HTTP/PostgreSQL/SMTP integration tests.
+
+Security review fixes include post-body session checks, transactional privilege locking, isolated revocation regressions, email quota short-circuiting and database-enforced catalogue generation consistency. The new migration is additive; use `npm run db:deploy` when updating an existing checkout. Optional public-deployment client rate limits and the remaining upstream development-only advisory are documented in [Phase 2 foundation](docs/phase-2-foundation.md#trusted-proxy-limits-and-dependency-advisory).

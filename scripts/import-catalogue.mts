@@ -36,12 +36,17 @@ try {
         create: row,
         update: row,
       });
-    for (const row of bootData.variants)
+    for (const row of bootData.variants) {
+      const generationId = bootData.tiers.find(
+        (tier) => tier.id === row.tierModelId,
+      )!.generationId;
+      const identity = { ...row, generationId };
       await tx.bootVariant.upsert({
         where: { id: row.id },
-        create: row,
-        update: row,
+        create: identity,
+        update: identity,
       });
+    }
     for (const row of bootData.colorways)
       await tx.bootColorway.upsert({
         where: { id: row.id },
@@ -50,7 +55,17 @@ try {
       });
     for (const row of bootData.entries) {
       const { id, slug, outsoleVariantId, colorwayId, sample } = row;
-      const identity = { id, slug, outsoleVariantId, colorwayId, sample };
+      const generationId = bootData.colorways.find(
+        (colorway) => colorway.id === colorwayId,
+      )!.generationId;
+      const identity = {
+        id,
+        slug,
+        outsoleVariantId,
+        colorwayId,
+        generationId,
+        sample,
+      };
       await tx.catalogueEntry.upsert({
         where: { id },
         create: identity,

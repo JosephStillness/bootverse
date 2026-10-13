@@ -4,6 +4,7 @@ import { getDb } from "@/lib/db";
 import { authConfigured } from "./config";
 import { requireOwner, type Principal } from "./authorization";
 import { profileSchema } from "./validation";
+import { lockedActiveUser } from "./authorization-db";
 
 export const publicProfileSelect = {
   username: true,
@@ -29,9 +30,12 @@ export async function updateProfile(
 ) {
   requireOwner(actor, ownerId);
   const data = profileSchema.parse(input);
-  return getDb().userProfile.update({
-    where: { userId: ownerId },
-    data,
-    select: publicProfileSelect,
+  return getDb().$transaction(async (tx) => {
+    requireOwner(await lockedActiveUser(tx, actor), ownerId);
+    return tx.userProfile.update({
+      where: { userId: ownerId },
+      data,
+      select: publicProfileSelect,
+    });
   });
 }

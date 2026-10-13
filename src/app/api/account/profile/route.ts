@@ -22,7 +22,8 @@ export async function PATCH(request: Request) {
     } catch {
       return Response.json({ error: "Invalid JSON." }, { status: 400 });
     }
-    const profile = await updateProfile(actor, actor.id, input);
+    const current = requireActiveUser(await currentUser());
+    const profile = await updateProfile(current, current.id, input);
     return Response.json({ profile });
   } catch (error) {
     if (error instanceof BodyTooLargeError)

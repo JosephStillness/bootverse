@@ -8,6 +8,7 @@ import { createServer } from "node:net";
 import { SMTPServer } from "smtp-server";
 import pg from "pg";
 import { communityTests } from "./community.integration";
+import { securityTests } from "./security.integration";
 
 // Disposable local PostgreSQL database; never writes fixtures to the app database.
 test(
@@ -28,11 +29,12 @@ test(
     adminUrl.pathname = "/postgres";
     const admin = new pg.Client({ connectionString: adminUrl.href });
     await admin.connect();
-    await admin.query(`CREATE DATABASE "${database}"`);
+    let created = false;
+    let databaseConnected = false;
+    let smtpListening = false;
     const dbUrl = new URL(source);
     dbUrl.pathname = `/${database}`;
     const db = new pg.Client({ connectionString: dbUrl.href });
-    await db.connect();
     let app: ChildProcess | undefined;
     const mail: string[] = [];
     const smtp = new SMTPServer({
@@ -66,6 +68,27 @@ test(
       await new Promise<void>((resolve) => server.close(() => resolve()));
       return port;
     }
+    t.after(async () => {
+      if (app && app.exitCode === null) {
+        app.kill("SIGTERM");
+        await once(app, "exit");
+      }
+      if (smtpListening)
+        await new Promise<void>((resolve) => smtp.close(() => resolve()));
+      if (databaseConnected) await db.end();
+      if (created) {
+        await admin.query(
+          "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1",
+          [database],
+        );
+        await admin.query(`DROP DATABASE IF EXISTS "${database}"`);
+      }
+      await admin.end();
+    });
+    await admin.query(`CREATE DATABASE "${database}"`);
+    created = true;
+    await db.connect();
+    databaseConnected = true;
     const port = await unusedPort(),
       smtpPort = await unusedPort(),
       base = `http://localhost:${port}`;
@@ -109,6 +132,7 @@ test(
       await new Promise<void>((resolve) =>
         smtp.listen(smtpPort, "127.0.0.1", resolve),
       );
+      smtpListening = true;
       app = spawn(
         process.execPath,
         ["node_modules/next/dist/bin/next", "start", "--port", String(port)],
@@ -348,6 +372,130 @@ test(
             (await fetch(`${base}/users/nonexistent-member`)).status,
             404,
           );
+        },
+      );
+      await securityTests(t, {
+        db,
+        base,
+        aliceId,
+        bob,
+        secret: env.AUTH_SECRET!,
+      });
+      await t.test(
+        "configured trusted proxy rejects spoofing and limits client auth/email traffic",
+        async () => {
+          const clientPort = await unusedPort(),
+            clientBase = `http://localhost:${clientPort}`;
+          const preview = spawn(
+            process.execPath,
+            [
+              "node_modules/next/dist/bin/next",
+              "start",
+              "--port",
+              String(clientPort),
+            ],
+            {
+              env: {
+                ...env,
+                AUTH_URL: clientBase,
+                AUTH_TRUSTED_IP_HEADER: "x-real-ip",
+              },
+              stdio: "pipe",
+            },
+          );
+          preview.stdout?.resume();
+          preview.stderr?.resume();
+          try {
+            for (let i = 0; i < 100; i++) {
+              try {
+                if ((await fetch(`${clientBase}/login`)).ok) break;
+              } catch {}
+              await pause();
+            }
+            assert.equal(
+              (
+                await fetch(`${clientBase}/api/auth/csrf`, {
+                  headers: { "x-forwarded-for": "192.0.2.1" },
+                })
+              ).status,
+              403,
+            );
+            const csrf = await fetch(`${clientBase}/api/auth/csrf`, {
+              headers: { "x-real-ip": "192.0.2.1" },
+            });
+            assert.equal(csrf.status, 200);
+            const csrfToken = (await csrf.json()).csrfToken;
+            const cookie = csrf.headers
+              .getSetCookie()
+              .map((value) => value.split(";")[0])
+              .join("; ");
+            const headers = {
+              origin: clientBase,
+              cookie,
+              "x-real-ip": "192.0.2.1",
+              "Content-Type": "application/x-www-form-urlencoded",
+            };
+            for (let i = 0; i < 30; i++)
+              assert.equal(
+                (
+                  await fetch(`${clientBase}/api/auth/signout`, {
+                    method: "POST",
+                    headers,
+                    body: new URLSearchParams({ csrfToken }),
+                    redirect: "manual",
+                  })
+                ).status,
+                302,
+              );
+            assert.equal(
+              (
+                await fetch(`${clientBase}/api/auth/signout`, {
+                  method: "POST",
+                  headers: { ...headers, "x-forwarded-for": "192.0.2.99" },
+                  body: new URLSearchParams({ csrfToken }),
+                  redirect: "manual",
+                })
+              ).status,
+              429,
+            );
+            for (let i = 0; i < 10; i++) {
+              const result = await fetch(
+                `${clientBase}/api/auth/signin/nodemailer`,
+                {
+                  method: "POST",
+                  headers: {
+                    ...headers,
+                    "x-real-ip": "192.0.2.2",
+                    "X-Auth-Return-Redirect": "1",
+                  },
+                  body: new URLSearchParams({
+                    csrfToken,
+                    email: `proxy-${i}@example.test`,
+                  }),
+                },
+              );
+              assert.equal(result.status, 200);
+              assert.ok(!(await result.json()).url.includes("error="));
+            }
+            assert.equal(
+              (
+                await fetch(`${clientBase}/api/auth/signin/nodemailer`, {
+                  method: "POST",
+                  headers: { ...headers, "x-real-ip": "192.0.2.2" },
+                  body: new URLSearchParams({
+                    csrfToken,
+                    email: "proxy-extra@example.test",
+                  }),
+                })
+              ).status,
+              429,
+            );
+          } finally {
+            if (preview.exitCode === null) {
+              preview.kill("SIGTERM");
+              await once(preview, "exit");
+            }
+          }
         },
       );
       await communityTests(t, { alice, bob, db, base, aliceId, bobId });
@@ -599,19 +747,6 @@ test(
       // Logs are sanitized by the app; never print SMTP messages, cookies or environment.
       console.error(appOutput.replace(/token=[^\s&]+/g, "token=[redacted]"));
       throw error;
-    } finally {
-      if (app && app.exitCode === null) {
-        app.kill("SIGTERM");
-        await once(app, "exit");
-      }
-      await new Promise<void>((resolve) => smtp.close(() => resolve()));
-      await db.end();
-      await admin.query(
-        "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1",
-        [database],
-      );
-      await admin.query(`DROP DATABASE "${database}"`);
-      await admin.end();
     }
   },
 );

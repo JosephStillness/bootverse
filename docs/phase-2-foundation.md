@@ -124,3 +124,11 @@ Runtime audit: zero vulnerabilities. Full audit: five high findings in the exist
 Continue with Sprint 2.2 after reviewing this foundation. Phase 2 as a whole is incomplete; Phase 3 Boot Fit Finder is not ready because no review/fit-observation data exists yet.
 
 References: [Auth.js email provider](https://authjs.dev/getting-started/providers/nodemailer), [Prisma adapter](https://authjs.dev/getting-started/adapters/prisma), [Prisma PostgreSQL adapter](https://www.prisma.io/docs/orm/v7/core-concepts/supported-databases/postgresql). Installed Next.js guides in `node_modules/next/dist/docs/` were used for the App Router APIs.
+
+## Trusted proxy limits and dependency advisory
+
+`AUTH_TRUSTED_IP_HEADER` is optional for local development. For a public deployment, configure `x-real-ip` or `cf-connecting-ip` only when a trusted reverse proxy overwrites that header and direct access to the Next server is blocked. Never trust an arbitrary incoming `X-Forwarded-For` list. Once enabled, missing/invalid client addresses fail closed, auth POSTs are limited to 30/minute per client and email requests to 10/15 minutes per client. Canonicalized addresses are stored only as HMAC bucket keys. Without this proxy setup, per-email and global protection remains active but distributed/rotating-address abuse is not fully prevented.
+
+Per-email rejection now returns before the global SMTP budget is consumed; suspended-account requests also do not spend it. Global budgets remain intentional mail-cost safeguards, not a DDoS service.
+
+The [braces advisory GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) currently lists no patched release; npm also reports 3.0.3 as latest. Keep the compatible Next 16 lint tooling rather than force-downgrading it. This is a development-only dependency, absent from production installs. The Next plugin uses its default current-directory root here; no external `settings.next.rootDir` globs are accepted. Recheck upstream before enabling root-directory glob configuration. Full audit therefore still reports the five linked High findings; runtime audit is zero.

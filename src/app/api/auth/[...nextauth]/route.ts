@@ -3,6 +3,8 @@ import { NextRequest } from "next/server";
 import { authConfigured, sameOriginRequest } from "@/lib/accounts/config";
 import { consumeLimit } from "@/lib/accounts/rate-limit";
 import { limitedText, BodyTooLargeError } from "@/lib/accounts/request";
+import { trustedClientIp } from "@/lib/accounts/request-client";
+import { AccessError } from "@/lib/accounts/authorization";
 
 export const runtime = "nodejs";
 async function handle(request: NextRequest, method: "GET" | "POST") {
@@ -19,6 +21,21 @@ async function handle(request: NextRequest, method: "GET" | "POST") {
     return Response.json({ error: "Invalid request origin." }, { status: 403 });
   }
   try {
+    const client = trustedClientIp(request);
+    if (method === "POST" && client) {
+      const publishingEmail = new URL(request.url).pathname.endsWith(
+        "/signin/nodemailer",
+      );
+      if (
+        !(await consumeLimit(`auth:client:${client}`, 30, 60)) ||
+        (publishingEmail &&
+          !(await consumeLimit(`email:client:${client}`, 10, 15 * 60)))
+      )
+        return Response.json(
+          { error: "Too many requests. Try again later." },
+          { status: 429 },
+        );
+    }
     if (method === "POST" && !(await consumeLimit("auth:requests", 300, 60)))
       return Response.json(
         { error: "Too many requests. Try again later." },
@@ -38,6 +55,8 @@ async function handle(request: NextRequest, method: "GET" | "POST") {
       return Response.json({ error: "Request is too large." }, { status: 413 });
     return await handlers.GET(request);
   } catch (error) {
+    if (error instanceof AccessError)
+      return Response.json({ error: error.message }, { status: error.status });
     if (error instanceof BodyTooLargeError)
       return Response.json({ error: error.message }, { status: 413 });
     return Response.json(

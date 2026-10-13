@@ -1707,13 +1707,27 @@
   }
   @media (max-width: 639px) {
     .community-page {
-      padding-block: 32px 56px;
+      padding-block: 24px 56px;
     }
     .community-header {
       align-items: start;
       flex-direction: column;
-      gap: 16px;
-      margin-bottom: 32px;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .community-header h1 {
+      margin-block: 10px;
+    }
+    .community-layout {
+      gap: 20px;
+    }
+    .community-sidebar nav {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      padding-bottom: 8px;
+    }
+    .community-sidebar nav a {
+      flex-shrink: 0;
     }
     .community-search {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
