@@ -9,6 +9,7 @@ const links = [
   { href: "/", label: "Home" },
   { href: "/boots", label: "Explore Boots" },
   { href: "/#about", label: "About BootVerse" },
+  { href: "/account", label: "My account" },
 ];
 export function Navbar() {
   const pathname = usePathname();
@@ -29,6 +30,13 @@ export function Navbar() {
           </Link>
           <Link href="/#about" className="nav-link">
             About
+          </Link>
+          <Link
+            href="/account"
+            className="nav-link"
+            aria-current={pathname === "/account" ? "page" : undefined}
+          >
+            My account
           </Link>
           <Link
             href="/boots"

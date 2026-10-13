@@ -14,9 +14,9 @@ All eight entries are fictional sample configurations using familiar brand and s
 - A client catalogue component owns search, filters, and sort, persisted in shareable URL query parameters. Its options come from the supplied records. A validated return URL preserves catalogue context when opening details.
 - Typed fixtures and validation live in `src/lib/boots`; UI consumes joined catalogue records.
 - Pure filtering and validation functions have unit tests. Runtime fixture validation fails loudly for broken identities.
-- No accounts, writes, database, community, reviews, recommendations, analytics, or cloud services.
+- Sprint 2.1 adds PostgreSQL/Prisma, Auth.js verified-email accounts, database sessions, public profiles and owner/role guards. See `docs/phase-2-foundation.md` for setup and boundaries. Community, reviews, recommendations, analytics and cloud services remain unimplemented.
 
-## Later PostgreSQL and Prisma
+## Catalogue integration with PostgreSQL and Prisma
 
 Translate the identity chain into separate tables with foreign keys. Keep unique generation slugs within families, tier labels within generations, and outsole codes within tier models. Catalogue entries should have unique `(outsoleVariantId, colorwayId)` pairs. Colorways can belong to a generation and be reused across its variants; enforce that both sides reference the same generation. Keep source URL, verification status, and observation date beside factual attributes, with nullable values for unverified fields. Preserve stable IDs and route slugs.
 

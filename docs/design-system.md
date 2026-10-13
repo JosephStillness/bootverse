@@ -39,7 +39,7 @@ Catalogue is request-rendered so boot links and query-specific results exist in 
 
 ## Scope and imagery
 
-All eight configurations remain unverified mock entries. The existing unbranded AI concept artwork is reused with visible disclaimers. There are no real product photos, prices, fit conclusions, reviews, endorsements, discussions, comparison tools, account actions, or Fit Finder. Add those UI surfaces only alongside real data/working implementations.
+All eight configurations remain unverified mock entries. The existing unbranded AI concept artwork is reused with visible disclaimers. There are no real product photos, prices, fit conclusions, reviews, endorsements, discussions, comparison tools, or Fit Finder. Sprint 2.1 adds working email sign-in, settings and public profile pages using the same tokens, with an initial avatar and visible form validation. Avatar uploads and activity content remain deferred. Add those UI surfaces only alongside real data/working implementations.
 
 ## QA
 
