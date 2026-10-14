@@ -33,14 +33,16 @@ Geist is self-hosted with swap rendering. Body text is 16px; small supporting la
 - `CatalogueBackLink`: validates the return URL and retains query context.
 - `SampleNotice`: concise truthful disclaimer without importing fixtures into the client tree.
 
-Home includes featured samples, functional brand/surface links, and an explanation of the catalogue. Catalogue uses a sidebar at 900px+, a filter drawer below 900px, two result columns below 1024px, and one below 640px. Navigation becomes a menu below 960px to accommodate Community without crowding the header. Details stack below 768px and use section links rather than fake review tabs.
+Home includes featured samples, functional brand/surface links, and an explanation of the catalogue. Catalogue uses a sidebar at 900px+, a filter drawer below 900px, two result columns below 1024px, and one below 640px. Navigation becomes a menu below 960px to accommodate Community without crowding the header. Details stack below 768px and use section links, including the live Reviews section.
 
 Catalogue is request-rendered so boot links and query-specific results exist in initial HTML. Home and boot detail bodies retain static generation. Filter changes continue to use native history integration without a full reload. Details preserve the originating catalogue URL through a small client return link with a static fallback.
 
 ## Scope and imagery
 
-All eight configurations remain unverified mock entries. The existing unbranded AI concept artwork is reused with visible disclaimers. There are no real product photos, prices, fit conclusions, structured reviews, endorsements, comparison tools, or Fit Finder. Sprint 2.2 discussions use white feed/detail/editor surfaces, the existing tokens, responsive category navigation, compact text boot references, and a safe shared Markdown preview/renderer. Counts come only from stored public discussions; no fake community engagement is shown. Sprint 2.1 adds working email sign-in, settings and public profile pages using the same tokens, with an initial avatar and visible form validation. Avatar uploads and activity content remain deferred. Add those UI surfaces only alongside real data/working implementations.
+All eight configurations remain unverified mock entries. The existing unbranded AI concept artwork is reused with visible disclaimers. There are no real product photos, prices, fit conclusions, endorsements, comparison tools, or Fit Finder. Sprint 2.2 discussions use white feed/detail/editor surfaces, the existing tokens, responsive category navigation, compact text boot references, and a safe shared Markdown preview/renderer. Counts come only from stored public discussions; no fake community engagement is shown. Sprint 2.1 adds working email sign-in, settings and public profile pages using the same tokens, with an initial avatar and visible form validation. Avatar uploads and activity content remain deferred. Add those UI surfaces only alongside real data/working implementations.
 
 ## QA
 
 Run typecheck, lint, tests, and build. Browser checks should cover 375/768/1024/1440 widths, mobile sheets, keyboard focus, Escape and focus restoration, rapid filter updates, sorting, reload/history, invalid filter values, return navigation, and 404s. CSS disables transitions and skeleton animation for reduced motion.
+
+Sprint 2.4 uses the same tokens for review summaries, real distributions, responsive cards and form disclosures. Ratings use native labelled radio groups with 44px targets and keyboard focus. Private foot information requires an unchecked consent control. Reviews load independently of static catalogue details, with explicit loading/empty/error/retry states. See [review delivery notes](phase-2-reviews.md).

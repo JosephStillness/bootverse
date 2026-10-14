@@ -288,7 +288,7 @@ export async function communityTests(
       assert.equal((await feed("?q=';DROP+TABLE+Post;--")).total, 0);
       assert.equal(
         (await fetch(`${base}/api/community/posts?sort=popular`)).status,
-        400,
+        200,
       );
       assert.equal(
         (await fetch(`${base}/api/community/posts?page=1001`)).status,

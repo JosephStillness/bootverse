@@ -24,7 +24,7 @@ const tag = z
     /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
     "Use letters, numbers and single hyphens.",
   );
-const text = (min: number, max: number) =>
+export const text = (min: number, max: number) =>
   z
     .string()
     .trim()
@@ -63,7 +63,7 @@ export const feedSchema = z.object({
   tag: z.union([tag, z.literal("")]).default(""),
   boot: z.string().max(100).default(""),
   author: z.union([usernameSchema, z.literal("")]).default(""),
-  sort: z.enum(["newest", "oldest"]).default("newest"),
+  sort: z.enum(["newest", "oldest", "popular", "discussed"]).default("newest"),
   page: z.coerce.number().int().min(1).max(1000).default(1),
 });
 export type FeedFilters = z.infer<typeof feedSchema>;

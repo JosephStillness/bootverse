@@ -67,7 +67,8 @@ export default async function Community({
               specifications.
             </p>
             <p>
-              Voting, comments and structured reviews will be available later.
+              Join the conversation with comments and votes. Open a linked boot
+              to read or write structured reviews.
             </p>
           </div>
         </aside>
@@ -94,6 +95,8 @@ export default async function Community({
               >
                 <option value="newest">Newest</option>
                 <option value="oldest">Oldest</option>
+                <option value="popular">Popular</option>
+                <option value="discussed">Most Discussed</option>
               </select>
             </div>
             {(["category", "tag", "boot", "author"] as const)
@@ -111,7 +114,7 @@ export default async function Community({
             </Button>
           </form>
           <p className="field-help">
-            Popularity and discussion sorting will arrive with votes and
+            Popular sorts by net votes. Most Discussed sorts by non-deleted
             comments.
           </p>
           {(filters.q ||

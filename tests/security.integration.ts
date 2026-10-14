@@ -192,6 +192,30 @@ export async function securityTests(
           title: "Unchanged security fixture",
           version: 1,
         });
+        await activate();
+        await held(
+          `/api/community/posts/${slug}/comments`,
+          "POST",
+          { content: "Must not save after suspension" },
+          suspend,
+          403,
+        );
+        await activate();
+        await held(
+          `/api/community/posts/${slug}/vote`,
+          "PUT",
+          { value: 1 },
+          suspend,
+          403,
+        );
+        const activity = (
+          await db.query(
+            'SELECT score,"commentCount" FROM "Post" WHERE id=$1',
+            [postId],
+          )
+        ).rows[0];
+        assert.deepEqual(activity, { score: 0, commentCount: 0 });
+        await activate();
         await held(
           "/api/account/profile",
           "PATCH",

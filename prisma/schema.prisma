@@ -19,18 +19,22 @@ enum UserStatus {
 }
 
 model User {
-  id            String       @id @default(cuid())
-  name          String?
-  email         String       @unique
-  emailVerified DateTime?    @db.Timestamptz(3)
-  image         String?
-  role          Role         @default(USER)
-  status        UserStatus   @default(ACTIVE)
-  createdAt     DateTime     @default(now()) @db.Timestamptz(3)
-  updatedAt     DateTime     @updatedAt @db.Timestamptz(3)
-  profile       UserProfile?
-  sessions      Session[]
-  posts         Post[]
+  id                 String              @id @default(cuid())
+  name               String?
+  email              String              @unique
+  emailVerified      DateTime?           @db.Timestamptz(3)
+  image              String?
+  role               Role                @default(USER)
+  status             UserStatus          @default(ACTIVE)
+  createdAt          DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime            @updatedAt @db.Timestamptz(3)
+  profile            UserProfile?
+  sessions           Session[]
+  posts              Post[]
+  comments           Comment[]
+  votes              PostVote[]
+  reviews            BootReview[]
+  reviewHelpfulVotes ReviewHelpfulVote[]
 }
 
 model UserProfile {
@@ -119,6 +123,7 @@ model BootVariant {
   surface      String?          @db.VarChar(2)
   tier         BootTier         @relation(fields: [tierModelId, generationId], references: [id, generationId], onDelete: Restrict, onUpdate: Restrict)
   entries      CatalogueEntry[]
+  reviews      BootReview[]
 
   @@unique([id, generationId])
   @@index([tierModelId])
@@ -163,23 +168,29 @@ enum PostStatus {
 }
 
 model Post {
-  id          String          @id @default(cuid())
-  slug        String          @unique @db.VarChar(120)
-  title       String          @db.VarChar(160)
-  content     String          @db.Text
-  authorId    String
-  categoryId  String
-  bootEntryId String?
-  status      PostStatus      @default(PUBLISHED)
-  version     Int             @default(1)
-  createdAt   DateTime        @default(now()) @db.Timestamptz(3)
-  updatedAt   DateTime        @updatedAt @db.Timestamptz(3)
-  author      User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  category    PostCategory    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  boot        CatalogueEntry? @relation(fields: [bootEntryId], references: [id], onDelete: Restrict)
-  tags        PostTag[]
+  id           String          @id @default(cuid())
+  slug         String          @unique @db.VarChar(120)
+  title        String          @db.VarChar(160)
+  content      String          @db.Text
+  authorId     String
+  categoryId   String
+  bootEntryId  String?
+  status       PostStatus      @default(PUBLISHED)
+  version      Int             @default(1)
+  createdAt    DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime        @updatedAt @db.Timestamptz(3)
+  author       User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  category     PostCategory    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  boot         CatalogueEntry? @relation(fields: [bootEntryId], references: [id], onDelete: Restrict)
+  tags         PostTag[]
+  comments     Comment[]
+  votes        PostVote[]
+  score        Int             @default(0)
+  commentCount Int             @default(0)
 
   @@index([status, createdAt, id])
+  @@index([status, score, createdAt, id])
+  @@index([status, commentCount, createdAt, id])
   @@index([authorId, status, createdAt])
   @@index([categoryId, status, createdAt])
   @@index([bootEntryId, status, createdAt])
@@ -198,4 +209,96 @@ model PostTag {
 
   @@id([postId, tagId])
   @@index([tagId])
+}
+
+model Comment {
+  id              String    @id @default(cuid())
+  postId          String
+  authorId        String?
+  parentCommentId String?
+  parentDepth     Int?
+  depth           Int       @default(0)
+  content         String?   @db.Text
+  version         Int       @default(1)
+  deletedAt       DateTime? @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @db.Timestamptz(3)
+  post            Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author          User?     @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  parent          Comment?  @relation("Replies", fields: [parentCommentId, postId, parentDepth], references: [id, postId, depth], onDelete: Restrict, onUpdate: Restrict)
+  replies         Comment[] @relation("Replies")
+
+  @@unique([id, postId, depth])
+  @@index([postId, parentCommentId, createdAt, id])
+  @@index([authorId])
+}
+
+model PostVote {
+  postId    String
+  userId    String
+  value     Int
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@index([userId])
+}
+
+// One review per exact generation/tier/outsole variant; colorways share reviews.
+model BootReview {
+  id               String              @id @default(cuid())
+  variantId        String
+  authorId         String
+  status           PostStatus          @default(PUBLISHED)
+  version          Int                 @default(1)
+  sizeWorn         String              @db.VarChar(12)
+  sizeSystem       String              @db.VarChar(4)
+  ownershipMonths  Int
+  matchesPlayed    Int
+  experience       String              @db.Text
+  pros             String              @db.Text
+  cons             String              @db.Text
+  comfort          Int
+  fit              Int
+  traction         Int
+  ballTouch        Int
+  durability       Int
+  value            Int
+  ratingTotal      Int
+  footLengthCm     Decimal?            @db.Decimal(4, 1)
+  footWidthCm      Decimal?            @db.Decimal(4, 1)
+  footShape        String?             @db.VarChar(20)
+  shareFootInfo    Boolean             @default(false)
+  position         String?             @db.VarChar(50)
+  playingSurface   String?             @db.VarChar(4)
+  widthObservation String?             @db.VarChar(30)
+  toeRoom          String?             @db.VarChar(300)
+  midfootPressure  String?             @db.VarChar(300)
+  heelLockdown     String?             @db.VarChar(300)
+  breakIn          String?             @db.VarChar(300)
+  purchasePrice    Decimal?            @db.Decimal(10, 2)
+  currency         String?             @db.VarChar(3)
+  createdAt        DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime            @updatedAt @db.Timestamptz(3)
+  variant          BootVariant         @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  author           User                @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  helpfulVotes     ReviewHelpfulVote[]
+
+  @@unique([authorId, variantId])
+  @@index([variantId, status, createdAt, id])
+  @@index([variantId, status, ratingTotal, createdAt, id])
+  @@index([authorId, status, createdAt, id])
+}
+
+model ReviewHelpfulVote {
+  reviewId  String
+  userId    String
+  createdAt DateTime   @default(now()) @db.Timestamptz(3)
+  review    BootReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([reviewId, userId])
+  @@index([userId])
 }

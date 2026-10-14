@@ -9,6 +9,9 @@ import { BootReferenceCard } from "@/components/community/post-card";
 import { DeletePost } from "@/components/community/delete-post";
 import { Avatar } from "@/components/accounts/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Comments } from "@/components/community/comments";
+import { VoteControls } from "@/components/community/vote-controls";
+import { votingState } from "@/lib/community/interactions";
 import { buttonVariants } from "@/components/ui/button";
 export async function generateMetadata({
   params,
@@ -35,6 +38,8 @@ export default async function PostDetail({
   if (!post) notFound();
   const actor = await currentUser(),
     manage = await postPermissions(slug, actor);
+  const canInteract = actor?.status === "ACTIVE" && !!actor.emailVerified;
+  const vote = await votingState(slug, actor);
   return (
     <div className="shell community-page post-detail">
       <Link href="/community" className="text-link">
@@ -69,6 +74,12 @@ export default async function PostDetail({
           </p>
         )}
         {post.boot && <BootReferenceCard boot={post.boot} />}
+        <VoteControls
+          key={`${vote.score}:${vote.value}`}
+          slug={slug}
+          initial={vote}
+          canInteract={canInteract}
+        />
         <PostMarkdown content={post.content} />
         <div className="post-labels">
           {post.tags.map((tag) => (
@@ -93,10 +104,7 @@ export default async function PostDetail({
           </div>
         )}
       </article>
-      <p className="field-help mt-6">
-        Comments and voting will be available later. For now, start a related
-        discussion from the community feed.
-      </p>
+      <Comments slug={slug} canInteract={canInteract} />
     </div>
   );
 }

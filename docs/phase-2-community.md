@@ -1,6 +1,8 @@
 # Phase 2 — Sprint 2.2: Community Feed + Posts
 
-Sprint 2.2 builds on the existing Auth.js/PostgreSQL foundation. It implements a real stored discussion feed and post CRUD only. Sprint 2.3 interactions, Sprint 2.4 structured reviews, and Sprint 2.5 uploads/moderation tools have not started.
+Historical sprint delivery notes. Structured reviews are now implemented in [Sprint 2.4](phase-2-reviews.md); use that document and the README for current verification and scope.
+
+Sprint 2.2 builds on the existing Auth.js/PostgreSQL foundation. It implements a real stored discussion feed and post CRUD only. This document records Sprint 2.2 delivery. Sprint 2.3 interactions are now implemented in [the interaction notes](phase-2-interactions.md); structured reviews and uploads/moderation tools remain outside scope.
 
 ## Implemented
 
@@ -93,7 +95,7 @@ A local build initially stalled with duplicated dependency/cache files observed 
 ## Remaining sprint boundaries
 
 - Popular/Most Discussed sorting and vote/comment counts require real Sprint 2.3 interactions. Only working Newest/Oldest sorts are exposed now.
-- Comments/replies/voting: not started.
+- Comments/replies/voting: implemented in Sprint 2.3; see [interaction notes](phase-2-interactions.md).
 - Structured reviews, ratings/aggregation and measurement consent: not started.
 - Image uploads/avatars, reports and moderation dashboard: not started.
 - Boot detail integration currently navigates to real filtered discussions; inline recent-discussion/review aggregation is deferred with later integration work.

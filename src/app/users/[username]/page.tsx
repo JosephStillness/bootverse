@@ -9,6 +9,7 @@ import { Avatar } from "@/components/accounts/avatar";
 import { listPosts } from "@/lib/community/service";
 import { feedSchema } from "@/lib/community/validation";
 import { PostCard } from "@/components/community/post-card";
+import { ReviewList } from "@/components/reviews/review-list";
 export const metadata: Metadata = {
   title: "Member profile",
   robots: { index: false, follow: true },
@@ -82,9 +83,7 @@ export default async function UserProfile({
               View all discussions
             </Link>
           )}
-          <p className="field-help">
-            Review history will be available when structured reviews launch.
-          </p>
+          <ReviewList key={profile.username} author={profile.username} />
         </section>
       </section>
     </div>

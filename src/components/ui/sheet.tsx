@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactElement, ReactNode } from "react";
+import type { ReactElement, ReactNode, ComponentProps } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { XIcon } from "@/components/icons";
 import { Button } from "./button";
@@ -11,19 +11,21 @@ export function Sheet({
   description,
   children,
   footer,
+  finalFocus,
 }: {
   trigger: ReactElement;
   title: string;
   description: string;
   children: ReactNode;
   footer?: ReactNode;
+  finalFocus?: ComponentProps<typeof Dialog.Popup>["finalFocus"];
 }) {
   return (
     <Dialog.Root>
       <Dialog.Trigger render={trigger} />
       <Dialog.Portal>
         <Dialog.Backdrop className="sheet-backdrop" />
-        <Dialog.Popup className="sheet-popup">
+        <Dialog.Popup className="sheet-popup" finalFocus={finalFocus}>
           <div className="sheet-heading">
             <div>
               <Dialog.Title>{title}</Dialog.Title>

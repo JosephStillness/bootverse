@@ -14,7 +14,7 @@ All eight entries are fictional sample configurations using familiar brand and s
 - A client catalogue component owns search, filters, and sort, persisted in shareable URL query parameters. Its options come from the supplied records. A validated return URL preserves catalogue context when opening details.
 - Typed fixtures and validation live in `src/lib/boots`; UI consumes joined catalogue records.
 - Pure filtering and validation functions have unit tests. Runtime fixture validation fails loudly for broken identities.
-- Sprint 2.1 adds PostgreSQL/Prisma, Auth.js verified-email accounts, database sessions, public profiles and owner/role guards. See `docs/phase-2-foundation.md` for setup and boundaries. Sprint 2.2 adds server-rendered community posts/feed and normalized database catalogue identities for FK-backed links; Phase 1 catalogue rendering remains fixture-backed. Reviews, recommendations, analytics and cloud services remain unimplemented. See `docs/phase-2-community.md`.
+- Sprint 2.1 adds PostgreSQL/Prisma, Auth.js verified-email accounts, database sessions, public profiles and owner/role guards. See `docs/phase-2-foundation.md` for setup and boundaries. Sprint 2.2 adds server-rendered community posts/feed and normalized database catalogue identities for FK-backed links; Phase 1 catalogue rendering remains fixture-backed. Recommendations, analytics and cloud services remain unimplemented. See `docs/phase-2-community.md`. Sprint 2.3 adds Comment/PostVote, bounded per-branch threads, DB-maintained activity counters and activity sorting; see `docs/phase-2-interactions.md`. Sprint 2.4 adds exact-variant BootReview/ReviewHelpfulVote with consent-aware public projections; see `docs/phase-2-reviews.md`.
 
 ## Catalogue integration with PostgreSQL and Prisma
 
@@ -22,9 +22,9 @@ Translate the identity chain into separate tables with foreign keys. Keep unique
 
 Replace the fixture joins at the server data boundary with Prisma queries returning the same UI record shape. Add pagination and database-backed filtering when catalogue size warrants it. Validate external data before it enters the domain. Do not add a generic repository layer until a real second data source needs it.
 
-## Later reviews
+## Structured reviews (Sprint 2.4)
 
-Review records should identify the specific tier and outsole variant, with an optional colorway reference. Never aggregate reviews across a whole family as if generations and tiers were interchangeable. Add author identity, moderation, ownership permissions, surface/use context, and published status before accepting user content. Show aggregate counts and uncertainty alongside ratings; distinguish measured facts from subjective reports.
+BootReview references the existing BootVariant: generation, tier and outsole stay separate; colorways of that exact variant share reviews. PostgreSQL enforces one review per author/variant, immutable identity, 1–5 criteria and server-derived equal-weight totals. Public aggregation excludes hidden/inactive/unverified authors; null averages mean not yet rated. Foot measurements and shape are owner-only unless explicit display consent is stored; public shape filtering honors the same rule. ReviewHelpfulVote is unique per review/member and owner-forbidden. These observations remain community opinions, never manufacturer or experimental facts. See the Sprint 2.4 notes for APIs, migrations and validation.
 
 ## Later Boot Fit Finder
 

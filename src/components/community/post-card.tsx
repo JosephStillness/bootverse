@@ -4,10 +4,15 @@ import { Badge } from "@/components/ui/badge";
 import type { CommunityPost, BootReference } from "@/lib/community/service";
 export function BootReferenceCard({ boot }: { boot: BootReference }) {
   return (
-    <Link className="post-boot-reference" href={`/boots/${boot.slug}`}>
-      <span>Linked boot{boot.sample ? " · Unverified sample" : ""}</span>
-      <strong>{boot.label}</strong>
-    </Link>
+    <div>
+      <Link className="post-boot-reference" href={`/boots/${boot.slug}`}>
+        <span>Linked boot{boot.sample ? " · Unverified sample" : ""}</span>
+        <strong>{boot.label}</strong>
+      </Link>
+      <Link href={`/boots/${boot.slug}#reviews`} className="text-link">
+        Read structured boot reviews
+      </Link>
+    </div>
   );
 }
 export function PostCard({ post }: { post: Omit<CommunityPost, "content"> }) {
@@ -46,6 +51,12 @@ export function PostCard({ post }: { post: Omit<CommunityPost, "content"> }) {
         ))}
       </div>
       {post.boot && <BootReferenceCard boot={post.boot} />}
+      <div className="post-engagement">
+        <span>{post.score} net votes</span>
+        <Link href={`/community/${post.slug}#comments`}>
+          {post.commentCount} {post.commentCount === 1 ? "comment" : "comments"}
+        </Link>
+      </div>
     </article>
   );
 }

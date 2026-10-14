@@ -74,6 +74,8 @@ const postSelect = {
   title: true,
   content: true,
   version: true,
+  score: true,
+  commentCount: true,
   createdAt: true,
   updatedAt: true,
   category: { select: { id: true, name: true } },
@@ -97,7 +99,7 @@ function postDTO(post: PostRow) {
   };
 }
 export type CommunityPost = ReturnType<typeof postDTO>;
-const publicWhere = {
+export const publicWhere = {
   status: "PUBLISHED",
   author: {
     status: "ACTIVE",
@@ -140,7 +142,15 @@ export async function listPosts(filters: FeedFilters) {
       getDb().post.findMany({
         where,
         select: postSelect,
-        orderBy: [{ createdAt: direction }, { id: direction }],
+        orderBy: [
+          ...(filters.sort === "popular"
+            ? [{ score: "desc" as const }]
+            : filters.sort === "discussed"
+              ? [{ commentCount: "desc" as const }]
+              : []),
+          { createdAt: direction },
+          { id: direction },
+        ],
         take: pageSize,
         skip: (filters.page - 1) * pageSize,
       }),
@@ -155,6 +165,8 @@ export async function listPosts(filters: FeedFilters) {
         slug,
         title,
         version,
+        score,
+        commentCount,
         createdAt,
         updatedAt,
         category,
@@ -168,6 +180,8 @@ export async function listPosts(filters: FeedFilters) {
         slug,
         title,
         version,
+        score,
+        commentCount,
         createdAt,
         updatedAt,
         category,

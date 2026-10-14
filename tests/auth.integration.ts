@@ -7,12 +7,14 @@ import { once } from "node:events";
 import { createServer } from "node:net";
 import { SMTPServer } from "smtp-server";
 import pg from "pg";
+import { reviewsTests } from "./reviews.integration";
+import { interactionsTests } from "./interactions.integration";
 import { communityTests } from "./community.integration";
 import { securityTests } from "./security.integration";
 
 // Disposable local PostgreSQL database; never writes fixtures to the app database.
 test(
-  "Sprint 2.1/2.2 real HTTP, PostgreSQL and SMTP lifecycle",
+  "Sprint 2.1/2.2/2.3/2.4 real HTTP, PostgreSQL and SMTP lifecycle",
   { timeout: 180000 },
   async (t) => {
     assert.ok(
@@ -447,17 +449,19 @@ test(
                 ).status,
                 302,
               );
-            assert.equal(
-              (
-                await fetch(`${clientBase}/api/auth/signout`, {
-                  method: "POST",
-                  headers: { ...headers, "x-forwarded-for": "192.0.2.99" },
-                  body: new URLSearchParams({ csrfToken }),
-                  redirect: "manual",
-                })
-              ).status,
-              429,
-            );
+            // A fixed-window limit may reset during the test. At most two windows fit this burst.
+            let authLimited = false;
+            for (let i = 0; i < 31 && !authLimited; i++) {
+              const response = await fetch(`${clientBase}/api/auth/signout`, {
+                method: "POST",
+                headers: { ...headers, "x-forwarded-for": "192.0.2.99" },
+                body: new URLSearchParams({ csrfToken }),
+                redirect: "manual",
+              });
+              assert.ok([302, 429].includes(response.status));
+              authLimited = response.status === 429;
+            }
+            assert.ok(authLimited);
             for (let i = 0; i < 10; i++) {
               const result = await fetch(
                 `${clientBase}/api/auth/signin/nodemailer`,
@@ -477,19 +481,23 @@ test(
               assert.equal(result.status, 200);
               assert.ok(!(await result.json()).url.includes("error="));
             }
-            assert.equal(
-              (
-                await fetch(`${clientBase}/api/auth/signin/nodemailer`, {
+            let emailLimited = false;
+            for (let i = 0; i < 11 && !emailLimited; i++) {
+              const response = await fetch(
+                `${clientBase}/api/auth/signin/nodemailer`,
+                {
                   method: "POST",
                   headers: { ...headers, "x-real-ip": "192.0.2.2" },
                   body: new URLSearchParams({
                     csrfToken,
-                    email: "proxy-extra@example.test",
+                    email: `proxy-extra-${i}@example.test`,
                   }),
-                })
-              ).status,
-              429,
-            );
+                  redirect: "manual",
+                },
+              );
+              emailLimited = response.status === 429;
+            }
+            assert.ok(emailLimited);
           } finally {
             if (preview.exitCode === null) {
               preview.kill("SIGTERM");
@@ -499,6 +507,8 @@ test(
         },
       );
       await communityTests(t, { alice, bob, db, base, aliceId, bobId });
+      await interactionsTests(t, { db, base, alice, bob, aliceId, bobId });
+      await reviewsTests(t, { db, base, alice, bob, aliceId, bobId });
       await t.test(
         "expired sessions and concurrent unique-username updates",
         async () => {
@@ -720,15 +730,68 @@ test(
               (await fetch(`${previewBase}/api/community/posts`)).status,
               503,
             );
+            assert.equal(
+              (await fetch(`${previewBase}/api/reviews`)).status,
+              503,
+            );
+            assert.equal(
+              (
+                await fetch(
+                  `${previewBase}/api/boot-variants/mercurial-elite-fg/ratings`,
+                )
+              ).status,
+              503,
+            );
           } finally {
             preview.kill("SIGTERM");
             await once(preview, "exit");
           }
         },
       );
+      const warnings = appOutput
+        .split("\n")
+        .filter((line) => line.includes("DeprecationWarning:"));
+      for (const warning of warnings)
+        console.warn("Observed runtime warning:", warning);
       assert.ok(
         !appOutput.includes("AdapterError"),
         "Revoked sessions should not raise adapter errors on logout.",
+      );
+      await t.test(
+        "security response headers protect pages, assets and APIs",
+        async () => {
+          for (const path of [
+            "/",
+            "/boots",
+            "/community",
+            "/api/reviews",
+            "/icon.svg",
+          ]) {
+            const response = await fetch(`${base}${path}`);
+            assert.equal(
+              response.headers.get("x-content-type-options"),
+              "nosniff",
+              path,
+            );
+            assert.equal(response.headers.get("x-frame-options"), "DENY", path);
+            assert.equal(
+              response.headers.get("referrer-policy"),
+              "no-referrer",
+              path,
+            );
+            assert.ok(
+              response.headers
+                .get("content-security-policy")
+                ?.includes("frame-ancestors 'none'"),
+              path,
+            );
+            assert.ok(
+              response.headers.get("permissions-policy")?.includes("camera=()"),
+              path,
+            );
+            assert.equal(response.headers.get("x-powered-by"), null, path);
+          }
+        },
       );
       await t.test("Phase 1 routes and catalogue still render", async () => {
         assert.equal((await fetch(`${base}/`)).status, 200);

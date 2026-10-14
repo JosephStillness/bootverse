@@ -8,6 +8,7 @@ import { SampleNotice } from "@/components/sample-notice";
 import { CatalogueBackLink } from "@/components/catalogue-back-link";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeftIcon, ArrowUpRightIcon } from "@/components/icons";
+import { ReviewList } from "@/components/reviews/review-list";
 export const dynamicParams = false;
 export function generateStaticParams() {
   return boots.map((boot) => ({ slug: boot.slug }));
@@ -124,6 +125,7 @@ export default async function BootDetail({
         <a href="#variants">Variants</a>
         <a href="#specifications">Specifications</a>
         <a href="#fit">Fit & evidence</a>
+        <a href="#reviews">Reviews</a>
       </nav>
       <section id="variants" className="detail-section">
         <div>
@@ -202,6 +204,11 @@ export default async function BootDetail({
           </Link>
         </div>
       </section>
+      <ReviewList
+        key={boot.variant.id}
+        variantId={boot.variant.id}
+        bootSlug={boot.slug}
+      />
       <section id="fit" className="detail-section">
         <div>
           <h2>Fit & evidence</h2>
@@ -220,11 +227,11 @@ export default async function BootDetail({
             </p>
           </div>
           <div>
-            <Badge variant="outline">No community data</Badge>
-            <h3>Ratings & player associations</h3>
+            <Badge variant="outline">Unverified associations</Badge>
+            <h3>Player associations</h3>
             <p>
-              Ratings and player endorsements are unknown. Community reviews
-              have not been implemented.
+              Player endorsements are unknown. Community reviews are
+              self-reported experiences, not verified specifications.
             </p>
           </div>
         </div>
