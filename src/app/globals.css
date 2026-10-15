@@ -2059,3 +2059,23 @@
 @media(max-width:1023px){ .creator-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:767px){ .creator-grid,.platform-image-grid { grid-template-columns:1fr; } .creator-video { overflow-wrap:anywhere; } }
 .review-card h3 { overflow-wrap: anywhere; }
+
+/* Private foot profile follows the existing account settings tokens. */
+.foot-page { max-width: 960px; padding-top: 2rem; padding-bottom: 4rem; }
+.foot-page > .account-intro { margin-top: 2rem; }
+.foot-notice { border-left: 3px solid var(--foreground); padding: 1rem; margin-bottom: 1.5rem; background: var(--surface); line-height: 1.7; }
+.foot-section { border: 1px solid var(--border); border-radius: 4px; background: var(--surface); margin-bottom: 1rem; min-width: 0; }
+.foot-section summary { padding: 1.25rem; cursor: pointer; font-weight: 600; min-height: 48px; }
+.foot-section-body { padding: 1.25rem; display: grid; gap: 1.25rem; min-width: 0; }
+.foot-section-body h2 { font-size: 1.25rem; font-weight: 600; }
+.foot-grid { display: grid; gap: 1.25rem; min-width: 0; }
+.foot-fieldset { border: 0; padding: 0; min-width: 0; }
+.foot-fieldset:disabled { opacity: .65; }
+.foot-form select { border: 1px solid var(--border); background: var(--surface); border-radius: 4px; padding: .75rem; min-height: 52px; }
+.foot-choices { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; min-width: 0; }
+.foot-choices legend { font-weight: 500; padding-bottom: .5rem; }
+.foot-choices label, .foot-consent { display: flex; gap: .75rem; align-items: center; min-height: 44px; line-height: 1.6; }
+.foot-consent { align-items: flex-start; }
+.foot-consent input { margin-top: .4rem; flex-shrink: 0; }
+.foot-choices input, .foot-consent input { width: 18px; height: 18px; accent-color: var(--foreground); }
+@media (min-width: 640px) { .foot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .foot-section-body { padding: 1.5rem; } }

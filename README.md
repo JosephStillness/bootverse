@@ -85,3 +85,9 @@ npm run dev:local
 Visit `/creators`, `/account/creator` and `/admin` (moderator/admin only). Setup for a fresh checkout, private S3 credentials, image cleanup scheduling, API details, verification policy and manual tests are in [Sprint 2.5 notes](docs/phase-2-creators.md). Run `npm run build` then `npm run test:platform:local` for the complete isolated suite. No cloud credentials or fabricated community accounts are included.
 
 **Neon release gate:** the configured Neon database currently reports all eight migrations pending (read-only check, 15 October 2026). No migrations were applied there. Do not point the new community features at that database until its existing schema and migration history have been reconciled and deployment is approved. Local migration status is clean; production readiness also requires real storage/email configuration, backup verification and a scheduled cleanup worker.
+
+## Sprint 3.1 — Private Foot Profile
+
+Account settings now links to `/profile/foot-profile`: optional left/right length and width, exact cm/mm conversion, subjective characteristics, playing preferences and private data controls. Historical reviews stay independent; no recommendations or public measurement sharing are implemented. Apply the additive local migration with `npm run db:local`. No new env variables are needed.
+
+Current Sprint 3.1 verification: **132 unit/component tests, 55 isolated integration tests**, lint, typecheck, Prisma validation/status/no-drift and production build pass. See [Foot Profile setup, API, validation, privacy and manual testing](docs/phase-3-foot-profile.md). Neon was not migrated or deployed.

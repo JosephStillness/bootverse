@@ -7,6 +7,7 @@ import { once } from "node:events";
 import { createServer } from "node:net";
 import { SMTPServer } from "smtp-server";
 import pg from "pg";
+import { footProfileTests } from "./foot-profile.integration";
 import { reviewsTests } from "./reviews.integration";
 import { interactionsTests } from "./interactions.integration";
 import { communityTests } from "./community.integration";
@@ -527,6 +528,7 @@ test(
       await communityTests(t, { alice, bob, db, base, aliceId, bobId });
       await interactionsTests(t, { db, base, alice, bob, aliceId, bobId });
       await reviewsTests(t, { db, base, alice, bob, aliceId, bobId });
+      await footProfileTests(t, { db, base, alice, bob, aliceId, bobId });
       if (testStorage) await platformTests(t, { db, base, alice, bob, aliceId, bobId, env });
       await t.test(
         "expired sessions and concurrent unique-username updates",

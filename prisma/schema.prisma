@@ -28,6 +28,7 @@ model User {
   status                UserStatus                    @default(ACTIVE)
   createdAt             DateTime                      @default(now()) @db.Timestamptz(3)
   updatedAt             DateTime                      @updatedAt @db.Timestamptz(3)
+  footProfile           FootProfile?
   profile               UserProfile?
   sessions              Session[]
   posts                 Post[]
@@ -496,4 +497,38 @@ model CreatorVideo {
   @@index([postId])
   @@index([reviewId])
   @@index([ownerId])
+}
+
+// Private current measurements. Historical BootReview measurements remain independent.
+model FootProfile {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leftLengthMm       Decimal? @db.Decimal(6, 2)
+  rightLengthMm      Decimal? @db.Decimal(6, 2)
+  leftWidthMm        Decimal? @db.Decimal(6, 2)
+  rightWidthMm       Decimal? @db.Decimal(6, 2)
+  measuredOn         DateTime? @db.Date
+  measurementMethod  String?  @db.VarChar(200)
+  footShape          String?  @db.VarChar(20)
+  instep             String?  @db.VarChar(20)
+  arch               String?  @db.VarChar(20)
+  toePreference      String?  @db.VarChar(20)
+  heelPreference     String?  @db.VarChar(20)
+  snugness           String?  @db.VarChar(20)
+  fitSensation       String?  @db.VarChar(20)
+  primaryPosition    String?  @db.VarChar(10)
+  secondaryPositions String[] @default([])
+  surface            String?  @db.VarChar(2)
+  budgetAmount       Decimal? @db.Decimal(9, 2)
+  currency           String?  @db.VarChar(3)
+  preferredBrands    String[] @default([])
+  preferredTiers     String[] @default([])
+  sizeWorn           Decimal? @db.Decimal(4, 2)
+  sizeSystem         String?  @db.VarChar(4)
+  allowFitFinder     Boolean  @default(false)
+  fitFinderConsentAt DateTime? @db.Timestamptz(3)
+  version            Int      @default(1)
+  createdAt          DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime @updatedAt @db.Timestamptz(3)
 }

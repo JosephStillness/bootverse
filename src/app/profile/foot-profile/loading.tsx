@@ -1,0 +1,1 @@
+export default function Loading(){return <div className="shell account-page" role="status" aria-busy="true"><h1>My foot profile</h1><div className="account-panel animate-pulse"><p>Loading your private profile…</p></div></div>;}
