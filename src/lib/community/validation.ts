@@ -41,6 +41,7 @@ export const text = (min: number, max: number) =>
 export const postSchema = z
   .object({
     title: text(5, 160),
+    sponsorship: text(2, 120).nullable().default(null),
     content: text(20, 10000),
     categoryId: category,
     tags: z

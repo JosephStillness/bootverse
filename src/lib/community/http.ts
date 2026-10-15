@@ -64,7 +64,11 @@ export async function mutationInput(
         { status: 429 },
       ),
     };
-  const body = await limitedText(request, interaction ? 16 * 1024 : 48 * 1024);
+  // Review character limits allow multi-byte text across several long fields.
+  const body = await limitedText(
+    request,
+    interaction === "reviews" ? 64 * 1024 : interaction ? 16 * 1024 : 48 * 1024,
+  );
   let input: unknown;
   try {
     input = JSON.parse(body);

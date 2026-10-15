@@ -59,6 +59,7 @@ export default async function EditPage({
           boots={boots}
           initial={{
             title: post.title,
+            sponsorship: post.sponsorship,
             content: post.content,
             categoryId: postSchema.shape.categoryId.parse(post.category.id),
             tags: post.tags,

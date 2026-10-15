@@ -11,6 +11,8 @@ export const publicProfileSelect = {
   displayName: true,
   bio: true,
   createdAt: true,
+  images: { where: { status: "PUBLISHED", state: "READY" }, select: { id: true }, take: 1 },
+  user: { select: { creator: { select: { status: true, verificationStatus: true } } } },
 } as const;
 
 export async function currentUser(): Promise<Principal | null> {

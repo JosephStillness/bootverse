@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { VerifiedCreatorBadge } from "@/components/platform/verified-badge";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { getDb } from "@/lib/db";
 import { publicProfileSelect } from "@/lib/accounts/service";
-import { usernameSchema } from "@/lib/accounts/validation";
+import { routeUsername } from "@/lib/accounts/validation";
 import { Avatar } from "@/components/accounts/avatar";
 import { listPosts } from "@/lib/community/service";
 import { feedSchema } from "@/lib/community/validation";
@@ -21,7 +22,7 @@ export default async function UserProfile({
 }) {
   await connection();
   const { username } = await params;
-  const parsed = usernameSchema.safeParse(username);
+  const parsed = routeUsername(username);
   if (!parsed.success) notFound();
   if (!process.env.DATABASE_URL)
     return (
@@ -46,7 +47,9 @@ export default async function UserProfile({
   return (
     <div className="shell account-page">
       <section className="account-panel public-profile">
-        <Avatar name={profile.displayName} />
+        <Avatar name={profile.displayName} imageId={profile.images[0]?.id} />
+        <VerifiedCreatorBadge verified={profile.user.creator?.status === "PUBLISHED" && profile.user.creator.verificationStatus === "APPROVED"} />
+        {profile.user.creator?.status === "PUBLISHED" && <Link className="text-link" href={`/creators/${encodeURIComponent(profile.username)}`}>Creator profile</Link>}
         <p className="eyebrow">BOOTVERSE MEMBER</p>
         <h1>{profile.displayName}</h1>
         <p className="text-muted-foreground">@{profile.username}</p>

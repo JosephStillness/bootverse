@@ -1,4 +1,5 @@
 import "server-only";
+import { publicAuthorSelect } from "@/lib/platform/public-author";
 import { getDb } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
 import type { Principal } from "@/lib/accounts/authorization";
@@ -62,6 +63,7 @@ export async function listComments(
           depth: true,
           version: true,
           deletedAt: true,
+          status: true,
           createdAt: true,
           updatedAt: true,
           authorId: true,
@@ -69,7 +71,7 @@ export async function listComments(
             select: {
               status: true,
               emailVerified: true,
-              profile: { select: { username: true, displayName: true } },
+              profile: publicAuthorSelect.profile,
             },
           },
           _count: { select: { replies: true } },
@@ -79,6 +81,7 @@ export async function listComments(
         comments: rows.map((row) => {
           const visible =
             !row.deletedAt &&
+            row.status === "PUBLISHED" &&
             row.author?.status === "ACTIVE" &&
             !!row.author.emailVerified &&
             !!row.author.profile;
@@ -125,6 +128,7 @@ export async function createComment(
           select: {
             depth: true,
             deletedAt: true,
+          status: true,
             author: { select: { status: true, emailVerified: true } },
           },
         })
@@ -133,6 +137,7 @@ export async function createComment(
       data.parentCommentId &&
       (!parent ||
         parent.deletedAt ||
+        parent.status !== "PUBLISHED" ||
         parent.author?.status !== "ACTIVE" ||
         !parent.author.emailVerified)
     )
@@ -173,7 +178,7 @@ export async function changeComment(
     const user = await lockedActiveUser(tx, actor),
       postId = await writablePost(tx, slug);
     const comment = await tx.comment.findFirst({
-      where: { id, postId, deletedAt: null },
+      where: { id, postId, deletedAt: null, status: "PUBLISHED" },
       select: { authorId: true },
     });
     if (!comment) throw new CommunityError(404, "Comment not found.");

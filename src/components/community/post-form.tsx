@@ -38,6 +38,7 @@ export function PostForm({
       .filter(Boolean);
     const result = postSchema.safeParse({
       title: form.get("title"),
+      sponsorship: form.get("sponsorship") || null,
       content: form.get("content"),
       categoryId: form.get("categoryId"),
       bootEntryId: form.get("bootEntryId") || null,
@@ -83,6 +84,7 @@ export function PostForm({
           Enable JavaScript to preview and publish a post.
         </p>
       </noscript>
+      <p className="field-help">Publish or save your post first, then add photos and creator videos on its detail page.</p>
       <div className="account-field">
         <label htmlFor="post-title">Title</label>
         <Input
@@ -103,6 +105,7 @@ export function PostForm({
           {fields.title?.[0]}
         </p>
       </div>
+      <label>Sponsor / paid partnership (optional)<Input name="sponsorship" defaultValue={initial?.sponsorship ?? ""} minLength={2} maxLength={120} disabled={pending} aria-describedby="sponsorship-error"/><span className="field-error" id="sponsorship-error" role="alert">{fields.sponsorship?.[0]}</span></label>
       <div className="post-form-grid">
         <div className="account-field">
           <label htmlFor="post-category">Category</label>
@@ -176,8 +179,8 @@ export function PostForm({
         />
         <p id="content-help" className="field-help">
           20–10,000 characters. Markdown supports headings, bold, lists and
-          links. HTML and embedded images are disabled; uploads will be
-          available later.
+          links. Raw HTML and Markdown images are disabled. Add photos after
+          saving.
         </p>
         <p id="content-error" role="alert" className="field-error">
           {fields.content?.[0]}

@@ -1,9 +1,13 @@
+import Link from "next/link";
+import { ImageManager } from "@/components/platform/image-manager";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/accounts/service";
 import { requireActiveUser } from "@/lib/accounts/authorization";
 import { getDb } from "@/lib/db";
 import { ProfileForm } from "@/components/accounts/profile-form";
+// Session access must remain request-time even when auth is unconfigured at build.
+export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Account settings",
   robots: { index: false, follow: false },
@@ -23,7 +27,7 @@ export default async function Account() {
   requireActiveUser(user);
   const profile = await getDb().userProfile.findUniqueOrThrow({
     where: { userId: user.id },
-    select: { username: true, displayName: true, bio: true },
+    select: { id: true, username: true, displayName: true, bio: true },
   });
   return (
     <div className="shell account-page">
@@ -38,10 +42,12 @@ export default async function Account() {
       <section className="account-panel" aria-labelledby="profile-heading">
         <h2 id="profile-heading">Public profile</h2>
         <p className="field-help">
-          Your avatar uses your display-name initial. Image uploads arrive in
-          Sprint 2.5.
+          Your public avatar is optional. Images are processed to remove metadata.
         </p>
+        <ImageManager kind="AVATAR" id={profile.id} editable />
         <ProfileForm profile={profile} />
+        <Link className="text-link" href="/account/creator">Manage creator profile</Link>
+        {user.role !== "USER" && <Link className="text-link" href="/admin">Moderation dashboard</Link>}
       </section>
     </div>
   );

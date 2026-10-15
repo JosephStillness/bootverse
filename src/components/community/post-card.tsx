@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { VerifiedCreatorBadge } from "@/components/platform/verified-badge";
 import { Avatar } from "@/components/accounts/avatar";
 import { Badge } from "@/components/ui/badge";
 import type { CommunityPost, BootReference } from "@/lib/community/service";
@@ -19,10 +20,11 @@ export function PostCard({ post }: { post: Omit<CommunityPost, "content"> }) {
   return (
     <article className="post-card">
       <div className="post-meta">
-        <Avatar name={post.author.displayName} />
+        <Avatar name={post.author.displayName} imageId={post.author.images[0]?.id} />
         <Link href={`/users/${post.author.username}`}>
           {post.author.displayName}
         </Link>
+        <VerifiedCreatorBadge verified={post.author.verifiedCreator} />
         <time dateTime={post.createdAt.toISOString()}>
           {post.createdAt.toLocaleDateString("en-GB", {
             day: "numeric",
@@ -35,6 +37,7 @@ export function PostCard({ post }: { post: Omit<CommunityPost, "content"> }) {
       <Link className="post-title" href={`/community/${post.slug}`}>
         <h2>{post.title}</h2>
       </Link>
+      {post.sponsorship && <p className="verification-note">Sponsored: {post.sponsorship}</p>}
       <p className="post-excerpt">{post.excerpt}</p>
       <div className="post-labels">
         <Link href={`/community?category=${post.category.id}`}>

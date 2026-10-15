@@ -14,17 +14,23 @@ const reservedUsernames = new Set([
 export const usernameSchema = z
   .string()
   .trim()
+  .normalize("NFC")
   .toLowerCase()
   .min(3)
   .max(30)
   .regex(
-    /^[a-z0-9]+(?:[-_][a-z0-9]+)*$/,
-    "Use letters, numbers, and single hyphens or underscores.",
+    /^[\p{L}\p{N}][\p{L}\p{M}\p{N}]*(?:[-_][\p{L}\p{N}][\p{L}\p{M}\p{N}]*)*$/u,
+    "Use Unicode letters, numbers, and single hyphens or underscores.",
   )
   .refine(
     (value) => !reservedUsernames.has(value),
     "This username is reserved.",
   );
+// Route parameters may arrive percent-encoded; valid handles never contain a percent sign.
+export function routeUsername(value: string) {
+  try { return usernameSchema.safeParse(decodeURIComponent(value)); }
+  catch { return usernameSchema.safeParse(""); }
+}
 export const profileSchema = z
   .object({
     username: usernameSchema,

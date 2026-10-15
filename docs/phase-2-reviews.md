@@ -122,3 +122,41 @@ Generated duplicate `.next/types/routes.d N.ts` files caused a local typecheck f
 Ready for **local Sprint 2.5 planning: YES**, based on the executed checks and isolated lifecycle coverage; no automatic next sprint. This is not a production deployment sign-off. Manufacturer catalogue verification, ownership verification, moderation/reporting dashboard, review images, recommendation algorithms and scale optimizations remain outside this sprint. Read filtering is indexed where needed for this MVP, but aggregate/options queries are live and may require caching or dedicated aggregation after measured load. Available filter options currently inspect stored distinct combinations; no large-dataset performance claim is made. Private measurements remain in the authenticated database and require appropriate operator access/backups; consent governs public display, not external data export. Comparison was not present in the repository and was not added.
 
 Subsequent repository-wide audit added regression coverage and fixed response headers, missing-review routing and concurrent-deletion pagination. Current verification is 104 unit tests and 40 integration tests. See [production review and remaining release gates](production-review-2026-10-14.md).
+
+
+## Sprint 2.4 completion check — 15 October 2026
+
+The existing review system was retained rather than rebuilt. This follow-up closes three gaps in the requested review experience:
+
+- Optional `sizingAdvice` (up to 300 characters), stored as nullable `VARCHAR(300)`, validated by Zod, editable by the owner, and rendered as subjective community opinion in the detail and card. Existing requests can omit it and existing records remain null.
+- Expandable cards now expose the six criterion scores, pros/cons, available fit observations and consent-aware foot information, plus public username. The initial card remains compact. Profile history reuses the same card.
+- Review POST/PATCH bodies now allow 64 KiB, accommodating valid multi-byte text across the 5,000/1,500/1,500-character fields and optional context. Other interaction limits and all rate limits remain unchanged; oversized reviews still return 413. An integration regression first reproduced the original 413 on valid content, then passed create/edit/persistence and oversized-input checks after the fix.
+
+New migration: `20261015010000_review_sizing_advice`. It only adds one nullable column. All seven migrations were exercised on disposable local databases. The new migration was then applied to the original localhost development database; all existing table row counts and content hashes were unchanged (excluding the new nullable field). Local migration status is up to date.
+
+**The configured Neon database is a separate environment. Its read-only migration status check returned seven pending migrations, including the account foundation; these were not applied to production in this sprint.** The successful local QA is not evidence of a working Neon/Resend deployment. Review and apply migrations on an isolated Neon branch using a direct, non-pooled connection before promoting to production. Configure a verified SMTP sender and restart the app. Catalogue identities must be imported with the existing `db:catalogue` script before writing exact-variant reviews on a new database; this does not create fake community activity. Keep actual connection strings and API keys in ignored env files.
+
+### Current executed checks
+
+| Check | Result |
+| --- | --- |
+| `npm test` | PASS — 106 tests in 7 files |
+| `npm run test:integration` with explicit saved localhost connection | PASS — 41 tests, 0 failed/skipped; disposable PostgreSQL and SMTP |
+| `npm run lint` | PASS |
+| `npm run typecheck` | PASS |
+| `npm run build` | PASS |
+| `npx prisma validate` | PASS |
+| Prisma migration status, localhost | PASS — seven applied |
+| Prisma migration status, configured Neon | PENDING — seven unapplied; read-only check |
+| Existing local row counts/content | PASS — unchanged after additive migration |
+| `npm audit --omit=dev` | PASS — 0 vulnerabilities |
+| `npm audit` | FAIL — five existing High findings in braces/ESLint development dependency chain; forced Next.js downgrade not applied |
+| Playwright browser workflow | PASS — isolated local production preview, captured SMTP, temporary QA account/review |
+
+Playwright verified anonymous form redirect and magic-link return, six interactive ratings including arrow-key selection, creation, persistence after refresh, owner editing, score recalculation, private measurements absent by default, consent publication/revocation, profile history, expandable cards with sizing advice, deletion confirmation/cancel focus, deletion and return to Not yet rated. Form and populated cards had no document horizontal overflow at 320/768/1024/1440px. Browser console reported zero errors or warnings. Temporary content was explicitly labeled synthetic QA content, and the QA database/mailbox were removed after testing. Helpful voting and second-user authorization were exercised in HTTP/database integration tests; a second-user helpful-vote browser flow was not run.
+
+Initial failing checks were not hidden: the new sizing-advice unit test failed before implementation; Unicode integration reproduced 413. An initial test fixture cleared unrelated email rate-limit buckets and was corrected to use another existing test actor without changing limits. Generated duplicate `.next/dev/types/* N.ts` files caused a build typecheck failure; only those ignored generated duplicates were removed. The final build and typecheck passed without suppressions. A browser empty-state assertion initially matched seven expected labels and was rerun with a unique score selector successfully.
+
+Remaining limits: real Resend delivery and Neon migration/deployment are not verified; no cross-browser or full screen-reader audit or production load test. The existing pg concurrent-query deprecation warning remains. Live aggregate/filter queries may need measured optimization at larger scale; no new aggregation infrastructure was added.
+
+Sprint 2.4 is stable in the tested local environment. Sprint 2.5 implementation has not started; production readiness remains blocked by the Neon/SMTP deployment setup and existing operational release gates. No secrets were changed and no code was pushed automatically.

@@ -1,4 +1,5 @@
 import "server-only";
+import { publicAuthorSelect, authorDTO } from "@/lib/platform/public-author";
 import type { Prisma } from "@/generated/prisma/client";
 import { getDb } from "@/lib/db";
 import { AccessError, type Principal } from "@/lib/accounts/authorization";
@@ -32,6 +33,7 @@ const select = {
   ownershipMonths: true,
   matchesPlayed: true,
   experience: true,
+  sponsorship: true,
   pros: true,
   cons: true,
   comfort: true,
@@ -49,12 +51,13 @@ const select = {
   midfootPressure: true,
   heelLockdown: true,
   breakIn: true,
+  sizingAdvice: true,
   purchasePrice: true,
   currency: true,
   createdAt: true,
   updatedAt: true,
   author: {
-    select: { profile: { select: { username: true, displayName: true } } },
+    select: publicAuthorSelect,
   },
   variant: {
     select: {
@@ -103,7 +106,7 @@ function dto(
   return {
     ...publicFields,
     purchasePrice: purchasePrice === null ? null : Number(purchasePrice),
-    author: author.profile!,
+    author: authorDTO(author),
     boot: {
       label: `${generation.family.brand.name} ${generation.family.name} · ${generation.name} · ${tier.name} · ${variant.surface ?? "Unknown surface"}`,
       slug: variant.entries[0]?.slug ?? null,

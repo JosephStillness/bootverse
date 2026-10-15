@@ -1,6 +1,6 @@
 # BootVerse
 
-Phase 1 catalogue + Phase 2 Sprint 2.1 accounts and Sprint 2.2 community posts and Sprint 2.3 comments/voting plus Sprint 2.4 structured boot reviews, built with Next.js App Router, TypeScript, Tailwind CSS, and customized shadcn/ui components.
+Phase 1 catalogue + Phase 2 Sprint 2.1 accounts and Sprint 2.2 community posts and Sprint 2.3 comments/voting plus Sprint 2.4 structured boot reviews and Sprint 2.5 images/moderation/creators, built with Next.js App Router, TypeScript, Tailwind CSS, and customized shadcn/ui components.
 
 ## Run locally
 
@@ -41,7 +41,7 @@ The shared AI artwork is an unbranded concept, not a product photo; all placemen
 - `src/lib/boots`: typed domain entities, normalized fixtures, joins, filters, validation, and tests.
 - `docs/architecture.md`: PostgreSQL/Prisma, reviews, and Boot Fit Finder integration notes.
 
-Sprint 2.1 adds Auth.js email registration/login, PostgreSQL/Prisma sessions, protected account settings, public profiles and server authorization. Account setup requires environment variables; the catalogue remains usable without them. Sprint 2.2 adds a real stored Community feed, post CRUD, safe Markdown, categories/tags, search, sorting and pagination, linked sample boots and public post history. Sprint 2.3 adds real comments, nested replies and voting. Sprint 2.4 adds structured exact-variant reviews, six criteria, live aggregates, private-by-default foot information, helpful votes and profile history. Uploads and production cloud infrastructure remain outside scope. See [Sprint 2.1 setup, security and verification](docs/phase-2-foundation.md).
+Sprint 2.1 adds Auth.js email registration/login, PostgreSQL/Prisma sessions, protected account settings, public profiles and server authorization. Account setup requires environment variables; the catalogue remains usable without them. Sprint 2.2 adds a real stored Community feed, post CRUD, safe Markdown, categories/tags, search, sorting and pagination, linked sample boots and public post history. Sprint 2.3 adds real comments, nested replies and voting. Sprint 2.4 adds structured exact-variant reviews, six criteria, live aggregates, private-by-default foot information, helpful votes and profile history. Sprint 2.5 adds private S3-compatible uploads, reporting/moderation, creator profiles, human ownership verification and safe YouTube attachments. Production deployment remains pending. See [Sprint 2.1 setup, security and verification](docs/phase-2-foundation.md).
 
 ## Checks
 
@@ -54,18 +54,34 @@ npm run build
 
 `npm run test:watch` runs the unit tests interactively.
 
-Current validation: typecheck, lint, 104 unit tests, 40 isolated real HTTP/PostgreSQL/SMTP integration tests, and production build pass. Browser checks cover mobile/desktop layouts, combined filters, search, empty-state reset, and detail navigation. `npm audit --omit=dev` reports zero vulnerabilities. Full audit reports five high-severity findings in ESLint's transitive glob dependencies; its proposed fix downgrades the Next.js lint configuration, so that incompatible fix was not applied.
+Current validation: typecheck, lint, 122 unit tests, 48 isolated real HTTP/PostgreSQL/SMTP/private-S3 integration tests, and production build pass. Browser checks cover mobile/desktop layouts, combined filters, search, empty-state reset, and detail navigation. `npm audit --omit=dev` reports zero vulnerabilities. Full audit reports five high-severity findings in ESLint's transitive glob dependencies; its proposed fix downgrades the Next.js lint configuration, so that incompatible fix was not applied.
 
 The redesign tokens, components, responsive rules, and scope are documented in [docs/design-system.md](docs/design-system.md).
 
 For accounts/community: copy `.env.example` to `.env`, configure PostgreSQL/SMTP/secret/origin, run `npm run db:deploy` and `npm run db:catalogue`, then `npm run dev`. Local email capture: `npm run dev:mail`. Run `npm run build` then `npm run test:integration` with local PostgreSQL for the isolated auth lifecycle tests.
 
-Community routes, API, migration, validation and remaining boundaries: [Sprint 2.2 notes](docs/phase-2-community.md). Current verification includes 104 unit tests and 40 real HTTP/PostgreSQL/SMTP integration tests.
+Community routes, API, migration, validation and remaining boundaries: [Sprint 2.2 notes](docs/phase-2-community.md). Current verification includes 122 unit tests and 48 real HTTP/PostgreSQL/SMTP/private-S3 integration tests.
 
 Security review fixes include post-body session checks, transactional privilege locking, isolated revocation regressions, email quota short-circuiting and database-enforced catalogue generation consistency. The new migration is additive; use `npm run db:deploy` when updating an existing checkout. Optional public-deployment client rate limits and the remaining upstream development-only advisory are documented in [Phase 2 foundation](docs/phase-2-foundation.md#trusted-proxy-limits-and-dependency-advisory).
 
 Sprint 2.3 adds stored comments, two-level replies and post voting, including Popular/Most Discussed sorting. Run `npm run db:deploy` for the additive migration. See [Comments, replies and voting](docs/phase-2-interactions.md) for behavior, APIs, tests and manual verification.
 
-Sprint 2.4 reviews: [behaviour, privacy policy, API endpoints, migration, verification and limits](docs/phase-2-reviews.md). No new environment variables are required; apply the additive migration with `npm run db:deploy`. Reviews share only an exact generation/tier/outsole variant across its colorways. Sprint 2.5 has not been started.
+Sprint 2.4 reviews: [behaviour, privacy policy, API endpoints, migration, verification and limits](docs/phase-2-reviews.md). No new environment variables are required; apply the additive migration with `npm run db:deploy`. Reviews share only an exact generation/tier/outsole variant across its colorways. Sprint 2.5 implementation and setup: [Images, moderation and creators](docs/phase-2-creators.md).
 
-Repository-wide review, confirmed fixes, executed checks and production release gates: [14 October 2026 production review](docs/production-review-2026-10-14.md). Final checks: 104 unit tests and 40 isolated integration tests; production deployment remains pending the documented operational checks.
+Repository-wide review, confirmed fixes, executed checks and production release gates: [14 October 2026 production review](docs/production-review-2026-10-14.md). Final checks: 122 unit tests and 48 isolated integration tests; production deployment remains pending the documented operational checks.
+
+## Sprint 2.5 local preview
+
+The existing `.env` remains unchanged. This workspace has a separate ignored localhost profile at `.local/development.env`. With Docker Desktop and local PostgreSQL running:
+
+```sh
+npm run dev:storage
+npm run db:local
+npm run dev:mail
+# Another terminal:
+npm run dev:local
+```
+
+Visit `/creators`, `/account/creator` and `/admin` (moderator/admin only). Setup for a fresh checkout, private S3 credentials, image cleanup scheduling, API details, verification policy and manual tests are in [Sprint 2.5 notes](docs/phase-2-creators.md). Run `npm run build` then `npm run test:platform:local` for the complete isolated suite. No cloud credentials or fabricated community accounts are included.
+
+**Neon release gate:** the configured Neon database currently reports all eight migrations pending (read-only check, 15 October 2026). No migrations were applied there. Do not point the new community features at that database until its existing schema and migration history have been reconciled and deployment is approved. Local migration status is clean; production readiness also requires real storage/email configuration, backup verification and a scheduled cleanup worker.

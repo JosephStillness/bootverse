@@ -576,4 +576,31 @@ export async function reviewsTests(
       ]);
     },
   );
+  await t.test("reviews: full-length Unicode content and sizing advice persist through create/edit", async () => {
+    const input = {
+      ...fixture,
+      experience: "ử".repeat(5000),
+      pros: "ố".repeat(1500),
+      cons: "ề".repeat(1500),
+      sizingAdvice: "Subjective test sizing observation only.",
+    };
+    assert.ok(Buffer.byteLength(JSON.stringify(input)) > 16 * 1024);
+    const created = await write(bob, "/api/reviews", "POST", input);
+    assert.equal(created.status, 201);
+    const reviewId = (await created.json()).review.id;
+    const persisted = (await read(`/api/reviews/${reviewId}`)).review;
+    assert.equal(persisted.experience, input.experience);
+    assert.equal(persisted.sizingAdvice, input.sizingAdvice);
+    const edited = await write(bob, `/api/reviews/${reviewId}`, "PATCH", {
+      ...input, sizingAdvice: "Updated subjective test advice.", version: 1,
+    });
+    assert.equal(edited.status, 200);
+    assert.equal((await read(`/api/reviews/${reviewId}`)).review.sizingAdvice, "Updated subjective test advice.");
+    const excessive = await write(bob, `/api/reviews/${reviewId}`, "PATCH", {
+      ...input, experience: "ử".repeat(25000), version: 2,
+    });
+    assert.equal(excessive.status, 413);
+    assert.equal((await write(bob, `/api/reviews/${reviewId}`, "DELETE", { version: 2 })).status, 204);
+  });
+
 }

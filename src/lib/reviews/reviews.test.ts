@@ -26,6 +26,7 @@ describe("structured review validation", () => {
   it("defaults to private foot info and retains six criteria", () => {
     const x = reviewSchema.parse(valid);
     expect(x.shareFootInfo).toBe(false);
+    expect(x.sponsorship).toBeNull();
     expect(x.footLengthCm).toBeNull();
     expect(overall(x)).toBe(3);
   });
@@ -76,6 +77,12 @@ describe("structured review validation", () => {
         currency: "GBP",
       }).shareFootInfo,
     ).toBe(true);
+  });
+  it("accepts optional sizing advice and bounds its length", () => {
+    expect(reviewSchema.parse(valid).sizingAdvice).toBeNull();
+    expect(reviewSchema.parse({ ...valid, sizingAdvice: "Compare the size you actually wore." }).sizingAdvice)
+      .toBe("Compare the size you actually wore.");
+    expect(reviewSchema.safeParse({ ...valid, sizingAdvice: "a".repeat(301) }).success).toBe(false);
   });
   it("requires optimistic version on edits", () => {
     expect(editReviewSchema.safeParse(valid).success).toBe(false);

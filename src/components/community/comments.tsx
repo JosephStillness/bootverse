@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { ReportControl } from "@/components/platform/report-control";
 import { useEffect, useId, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar } from "@/components/accounts/avatar";
@@ -157,7 +158,7 @@ function CommentRow({
         <div className="post-meta">
           {item.author ? (
             <>
-              <Avatar name={item.author.displayName} />
+              <Avatar name={item.author.displayName} imageId={item.author.images[0]?.id} />
               <Link href={`/users/${item.author.username}`}>
                 {item.author.displayName}
               </Link>
@@ -192,6 +193,7 @@ function CommentRow({
                 : "This comment is no longer public. Replies are preserved.")}
           </p>
         )}
+        {item.content && <ReportControl kind="COMMENT" id={item.id} />}
         <div className="comment-actions">
           {canInteract && item.content && item.depth < 2 && (
             <Button

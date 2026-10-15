@@ -9,6 +9,7 @@ const links = [
   { href: "/", label: "Home" },
   { href: "/boots", label: "Explore Boots" },
   { href: "/community", label: "Community" },
+  { href: "/creators", label: "Creators" },
   { href: "/#about", label: "About BootVerse" },
   { href: "/account", label: "My account" },
 ];
@@ -38,6 +39,7 @@ export function Navbar() {
           >
             Community
           </Link>
+          <Link href="/creators" className="nav-link" aria-current={pathname.startsWith("/creators") ? "page" : undefined}>Creators</Link>
           <Link href="/#about" className="nav-link">
             About
           </Link>

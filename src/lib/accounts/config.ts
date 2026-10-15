@@ -11,6 +11,14 @@ export function authConfigured() {
   )
     return false;
   try {
+    const smtp = new URL(EMAIL_SERVER);
+    if (
+      !["smtp:", "smtps:"].includes(smtp.protocol) ||
+      !smtp.hostname ||
+      (smtp.hostname === "smtp.resend.com" &&
+        (smtp.username !== "resend" || !smtp.password))
+    )
+      return false;
     const url = new URL(AUTH_URL);
     return (
       url.pathname === "/" &&

@@ -1,7 +1,12 @@
 import Link from "next/link";
+import { ImageManager } from "@/components/platform/image-manager";
+import { VideoPanel } from "@/components/platform/video-panel";
+import { ReportControl } from "@/components/platform/report-control";
+import { VerifiedCreatorBadge } from "@/components/platform/verified-badge";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
+import { getDb } from "@/lib/db";
 import { publicPost, postPermissions } from "@/lib/community/service";
 import { currentUser } from "@/lib/accounts/service";
 import { PostMarkdown } from "@/components/community/markdown";
@@ -38,6 +43,7 @@ export default async function PostDetail({
   if (!post) notFound();
   const actor = await currentUser(),
     manage = await postPermissions(slug, actor);
+  const owned = !!actor && await getDb().post.count({where:{id:post.id,authorId:actor.id}}) > 0;
   const canInteract = actor?.status === "ACTIVE" && !!actor.emailVerified;
   const vote = await votingState(slug, actor);
   return (
@@ -52,12 +58,14 @@ export default async function PostDetail({
             Community opinion · Unverified claims
           </span>
         </div>
+        {post.sponsorship && <p className="verification-note">Sponsored: {post.sponsorship}</p>}
         <h1>{post.title}</h1>
         <div className="post-meta">
-          <Avatar name={post.author.displayName} />
+          <Avatar name={post.author.displayName} imageId={post.author.images[0]?.id} />
           <Link href={`/users/${post.author.username}`}>
             {post.author.displayName}
           </Link>
+          <VerifiedCreatorBadge verified={post.author.verifiedCreator} />
           <time dateTime={post.createdAt.toISOString()}>
             {post.createdAt.toLocaleDateString("en-GB", {
               day: "numeric",
@@ -81,6 +89,9 @@ export default async function PostDetail({
           canInteract={canInteract}
         />
         <PostMarkdown content={post.content} />
+        <ImageManager kind="POST" id={post.id} editable={owned} />
+        <VideoPanel kind="POST" id={post.id} editable={owned} />
+        <ReportControl kind="POST" id={post.id} />
         <div className="post-labels">
           {post.tags.map((tag) => (
             <Link

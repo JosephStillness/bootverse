@@ -5,7 +5,7 @@ import {
   requireModerator,
   type Principal,
 } from "./authorization";
-import { emailSchema, profileSchema, safeReturnPath } from "./validation";
+import { routeUsername, emailSchema, profileSchema, safeReturnPath } from "./validation";
 import { authConfigured, sameOriginRequest } from "./config";
 import { BodyTooLargeError, limitedText } from "./request";
 import { trustedClientIp } from "./request-client";
@@ -43,6 +43,13 @@ describe("profile input", () => {
     displayName: " Alex ",
     bio: "Hello\nFootball",
   };
+  it("supports Unicode handles with canonical normalization", () => {
+    expect(profileSchema.parse({...valid, username:"Giày-Đá-Bóng"}).username).toBe("giày-đá-bóng");
+    expect(profileSchema.safeParse({...valid,username:"日本の靴"}).success).toBe(true);
+    expect(profileSchema.safeParse({...valid,username:"name/unsafe"}).success).toBe(false);
+    expect(routeUsername(encodeURIComponent("giày-đá-bóng")).success).toBe(true);
+    expect(routeUsername("%ZZ").success).toBe(false);
+  });
   it("normalizes usernames and keeps text as text", () => {
     expect(profileSchema.parse(valid)).toEqual({
       username: "boot-fan_7",
@@ -164,6 +171,22 @@ describe("return links and CSRF", () => {
     expect(authConfigured()).toBe(true);
     vi.stubEnv("AUTH_SECRET", "");
     expect(authConfigured()).toBe(false);
+  });
+  it("rejects invalid SMTP configuration while supporting Resend and local SMTP", () => {
+    vi.stubEnv("DATABASE_URL", "postgresql://localhost/test");
+    vi.stubEnv("AUTH_SECRET", "x".repeat(32));
+    vi.stubEnv("AUTH_URL", "http://localhost:3000");
+    vi.stubEnv("EMAIL_FROM", "BootVerse <noreply@example.com>");
+    vi.stubEnv("EMAIL_SERVER", "not-an-smtp-url");
+    expect(authConfigured()).toBe(false);
+    vi.stubEnv("EMAIL_SERVER", "https://smtp.resend.com");
+    expect(authConfigured()).toBe(false);
+    vi.stubEnv("EMAIL_SERVER", "smtps://smtp.resend.com:465");
+    expect(authConfigured()).toBe(false);
+    vi.stubEnv("EMAIL_SERVER", "smtps://resend:test-only@smtp.resend.com:465");
+    expect(authConfigured()).toBe(true);
+    vi.stubEnv("EMAIL_SERVER", "smtp://localhost:1025");
+    expect(authConfigured()).toBe(true);
   });
   it("bounds request bodies by bytes without relying on content-length", async () => {
     expect(

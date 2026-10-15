@@ -10,6 +10,8 @@ import pg from "pg";
 import { reviewsTests } from "./reviews.integration";
 import { interactionsTests } from "./interactions.integration";
 import { communityTests } from "./community.integration";
+import { platformTests } from "./platform.integration";
+import { S3Client, CreateBucketCommand, ListObjectsV2Command, DeleteObjectsCommand, DeleteBucketCommand } from "@aws-sdk/client-s3";
 import { securityTests } from "./security.integration";
 
 // Disposable local PostgreSQL database; never writes fixtures to the app database.
@@ -38,6 +40,8 @@ test(
     dbUrl.pathname = `/${database}`;
     const db = new pg.Client({ connectionString: dbUrl.href });
     let app: ChildProcess | undefined;
+    let testStorage: S3Client | undefined;
+    let testBucket: string | undefined;
     const mail: string[] = [];
     const smtp = new SMTPServer({
       authOptional: true,
@@ -86,6 +90,11 @@ test(
         await admin.query(`DROP DATABASE IF EXISTS "${database}"`);
       }
       await admin.end();
+      if (testStorage && testBucket) {
+        const objects = await testStorage.send(new ListObjectsV2Command({Bucket:testBucket}));
+        if(objects.Contents?.length)await testStorage.send(new DeleteObjectsCommand({Bucket:testBucket,Delete:{Objects:objects.Contents.map(x=>({Key:x.Key!}))}}));
+        await testStorage.send(new DeleteBucketCommand({Bucket:testBucket}));
+      }
     });
     await admin.query(`CREATE DATABASE "${database}"`);
     created = true;
@@ -97,12 +106,21 @@ test(
     const env: NodeJS.ProcessEnv = {
       ...process.env,
       DATABASE_URL: dbUrl.href,
+      DATABASE_URL_UNPOOLED: dbUrl.href,
       AUTH_SECRET: randomBytes(48).toString("base64url"),
       AUTH_URL: base,
       EMAIL_SERVER: `smtp://127.0.0.1:${smtpPort}`,
       EMAIL_FROM: "BootVerse <noreply@bootverse.local>",
       NODE_ENV: "production",
     };
+    if(process.env.BOOTVERSE_TEST_STORAGE === "1") {
+      assert.ok(env.S3_ENDPOINT && ["localhost","127.0.0.1"].includes(new URL(env.S3_ENDPOINT).hostname), "Platform tests require local S3 storage.");
+      assert.ok(env.S3_ACCESS_KEY_ID && env.S3_SECRET_ACCESS_KEY, "Configure local storage credentials first.");
+      testBucket = `bootverse-qa-${randomBytes(8).toString("hex")}`;
+      testStorage = new S3Client({endpoint:env.S3_ENDPOINT,region:env.S3_REGION ?? "us-east-1",forcePathStyle:true,credentials:{accessKeyId:env.S3_ACCESS_KEY_ID!,secretAccessKey:env.S3_SECRET_ACCESS_KEY!}});
+      await testStorage.send(new CreateBucketCommand({Bucket:testBucket}));
+      Object.assign(env,{S3_BUCKET:testBucket,UPLOAD_MAX_BYTES:String(1024*1024),UPLOAD_MAX_PER_CONTENT:"2",UPLOAD_MAX_PER_USER:"8",UPLOAD_USER_QUOTA_BYTES:String(1024*1024)});
+    }
     let appOutput = "";
     try {
       const migration = spawn(
@@ -509,6 +527,7 @@ test(
       await communityTests(t, { alice, bob, db, base, aliceId, bobId });
       await interactionsTests(t, { db, base, alice, bob, aliceId, bobId });
       await reviewsTests(t, { db, base, alice, bob, aliceId, bobId });
+      if (testStorage) await platformTests(t, { db, base, alice, bob, aliceId, bobId, env });
       await t.test(
         "expired sessions and concurrent unique-username updates",
         async () => {

@@ -1,4 +1,8 @@
 import Link from "next/link";
+import { ImageManager } from "@/components/platform/image-manager";
+import { VideoPanel } from "@/components/platform/video-panel";
+import { ReportControl } from "@/components/platform/report-control";
+import { VerifiedCreatorBadge } from "@/components/platform/verified-badge";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { publicReview, helpfulState } from "@/lib/reviews/service";
@@ -87,6 +91,8 @@ export default async function ReviewDetail({
           </div>
         ))}
       </dl>
+      <VerifiedCreatorBadge verified={review.author.verifiedCreator} />
+      {review.sponsorship && <p className="verification-note">Sponsored: {review.sponsorship}</p>}
       <h2>Overall experience</h2>
       <p className="review-text">{review.experience}</p>
       <div className="post-form-grid">
@@ -128,6 +134,7 @@ export default async function ReviewDetail({
             ["Midfoot pressure", review.midfootPressure],
             ["Heel lockdown", review.heelLockdown],
             ["Break-in", review.breakIn],
+            ["Sizing advice (community opinion)", review.sizingAdvice],
           ].map(([label, value]) => (
             <div key={label}>
               <dt>{label}</dt>
@@ -143,6 +150,9 @@ export default async function ReviewDetail({
           price.
         </p>
       )}
+      <ImageManager kind="REVIEW" id={id} editable={owned} />
+      <VideoPanel kind="REVIEW" id={id} editable={owned} />
+      <ReportControl kind="REVIEW" id={id} />
       <ReviewActions
         key={`${id}:${review.version}:${review.helpfulCount}:${state.helpful}:${actor?.id ?? "anonymous"}`}
         id={id}

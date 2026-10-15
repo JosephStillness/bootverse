@@ -1,4 +1,5 @@
 import "server-only";
+import { publicAuthorSelect, authorDTO } from "@/lib/platform/public-author";
 import { randomUUID } from "node:crypto";
 import { cache } from "react";
 import { lockedActiveUser } from "@/lib/accounts/authorization-db";
@@ -73,6 +74,7 @@ const postSelect = {
   slug: true,
   title: true,
   content: true,
+  sponsorship: true,
   version: true,
   score: true,
   commentCount: true,
@@ -80,7 +82,7 @@ const postSelect = {
   updatedAt: true,
   category: { select: { id: true, name: true } },
   author: {
-    select: { profile: { select: { username: true, displayName: true } } },
+    select: publicAuthorSelect,
   },
   tags: {
     select: { tag: { select: { name: true } } },
@@ -92,7 +94,7 @@ type PostRow = Prisma.PostGetPayload<{ select: typeof postSelect }>;
 function postDTO(post: PostRow) {
   return {
     ...post,
-    author: post.author.profile!,
+    author: authorDTO(post.author),
     tags: post.tags.map((row) => row.tag.name),
     boot: post.boot ? bootReference(post.boot) : null,
     excerpt: postExcerpt(post.content),
@@ -164,6 +166,7 @@ export async function listPosts(filters: FeedFilters) {
         id,
         slug,
         title,
+        sponsorship,
         version,
         score,
         commentCount,
@@ -179,6 +182,7 @@ export async function listPosts(filters: FeedFilters) {
         id,
         slug,
         title,
+        sponsorship,
         version,
         score,
         commentCount,

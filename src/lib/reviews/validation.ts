@@ -35,6 +35,7 @@ export const reviewSchema = z
     ownershipMonths: z.number().int().min(0).max(600),
     matchesPlayed: z.number().int().min(0).max(10000),
     experience: text(40, 5000),
+    sponsorship: optionalText(120),
     pros: text(3, 1500),
     cons: text(3, 1500),
     comfort: rating,
@@ -69,6 +70,7 @@ export const reviewSchema = z
     midfootPressure: optionalText(300),
     heelLockdown: optionalText(300),
     breakIn: optionalText(300),
+    sizingAdvice: optionalText(300),
     purchasePrice: z
       .number()
       .min(0)

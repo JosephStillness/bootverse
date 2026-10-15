@@ -112,7 +112,7 @@ export function ReviewForm({
           max={max}
           step={step}
           defaultValue={String(initial?.[key] ?? "")}
-          maxLength={key === "position" ? 50 : key === "currency" ? 3 : 12}
+          maxLength={key === "sponsorship" ? 120 : key === "position" ? 50 : key === "currency" ? 3 : 12}
           aria-invalid={!!fields[key]}
           aria-describedby={`${key}-error`}
         />
@@ -176,14 +176,14 @@ export function ReviewForm({
     );
   }
   return (
-    <form onSubmit={submit} className="post-form">
+    <form method="post" onSubmit={submit} className="post-form">
       <noscript>Enable JavaScript to submit a review.</noscript>
       <fieldset disabled={pending} className="review-form-fields">
         <legend className="sr-only">Review details</legend>
         <p className="field-help">
           One review per exact variant. Ownership and opinions are
           self-reported. Use your actual experience; catalogue configurations
-          are unverified samples.
+          are unverified samples. Add photos and creator videos after saving.
         </p>
         <div className="post-form-grid">
           {input("sizeWorn", "Boot size worn", "text", true)}
@@ -251,6 +251,7 @@ export function ReviewForm({
           5000,
           40,
         )}
+        {input("sponsorship", "Sponsor / paid partnership (optional)")}
         <div className="post-form-grid">
           {textarea("pros", "Pros", true, 1500, 3)}
           {textarea("cons", "Cons", true, 1500, 3)}
@@ -311,7 +312,8 @@ export function ReviewForm({
             !!fields.toeRoom ||
             !!fields.midfootPressure ||
             !!fields.heelLockdown ||
-            !!fields.breakIn
+            !!fields.breakIn ||
+            !!fields.sizingAdvice
           }
         >
           <summary>Optional playing context & fit observations</summary>
@@ -335,6 +337,7 @@ export function ReviewForm({
           {textarea("midfootPressure", "Midfoot pressure")}
           {textarea("heelLockdown", "Heel lockdown")}
           {textarea("breakIn", "Break-in experience")}
+          {textarea("sizingAdvice", "Sizing advice from your experience")}
         </details>
         <details
           className="review-optional"

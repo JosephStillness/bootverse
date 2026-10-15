@@ -45,6 +45,7 @@ export default async function NewPost({
           boots={boots}
           initial={{
             title: "",
+            sponsorship: null,
             content: "",
             categoryId: "questions",
             tags: [],
