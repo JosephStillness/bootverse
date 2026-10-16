@@ -94,3 +94,11 @@ describe("structured review validation", () => {
     expect(helpfulSchema.safeParse({ helpful: 1 }).success).toBe(false);
   });
 });
+
+it("requires separate explicit analytical consent and public sharing; timestamps are server-owned", () => {
+ expect(reviewSchema.parse(valid).analysisConsent).toBe(false);
+ expect(reviewSchema.safeParse({...valid,analysisConsent:true}).success).toBe(false);
+ expect(reviewSchema.parse({...valid,analysisConsent:true,shareFootInfo:true}).analysisConsent).toBe(true);
+ expect(reviewSchema.safeParse({...valid,analysisConsentAt:"2026-10-16"}).success).toBe(false);
+ expect(reviewSchema.safeParse({...valid,toeRoomCategory:"malicious"}).success).toBe(false);
+});

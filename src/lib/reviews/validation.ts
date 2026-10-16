@@ -18,6 +18,13 @@ export const widthObservations = [
   "slightly-wide",
   "too-wide",
 ] as const;
+export const analysisOptions = {
+ reviewInstep: ["Low", "Medium", "High", "Unsure"],
+ reviewFitSensation: ["Barefoot-like", "Cushioned", "Structured", "Unsure"],
+ toeRoomCategory: ["tight", "expected", "roomy"],
+ heelLockdownCategory: ["loose", "secure", "pressure"],
+ breakInCategory: ["none", "under-3-sessions", "3-10-sessions", "over-10-sessions", "not-completed"],
+} as const;
 const optionalText = (max: number) => text(1, max).nullable().default(null);
 const rating = z.number().int().min(1).max(5);
 export const reviewSchema = z
@@ -60,6 +67,12 @@ export const reviewSchema = z
       .default(null),
     footShape: z.enum(footShapes).nullable().default(null),
     shareFootInfo: z.boolean().default(false),
+    analysisConsent: z.boolean().default(false),
+    reviewInstep: z.enum(analysisOptions.reviewInstep).nullable().default(null),
+    reviewFitSensation: z.enum(analysisOptions.reviewFitSensation).nullable().default(null),
+    toeRoomCategory: z.enum(analysisOptions.toeRoomCategory).nullable().default(null),
+    heelLockdownCategory: z.enum(analysisOptions.heelLockdownCategory).nullable().default(null),
+    breakInCategory: z.enum(analysisOptions.breakInCategory).nullable().default(null),
     position: optionalText(50),
     playingSurface: z
       .enum(["FG", "AG", "TF", "SG", "IN", "OTHER"])
@@ -85,6 +98,10 @@ export const reviewSchema = z
       .default(null),
   })
   .strict()
+  .refine(x => !x.analysisConsent || x.shareFootInfo, {
+    path: ["analysisConsent"],
+    message: "Analysis requires your explicit public foot-information sharing consent. Disable analysis to withdraw sharing.",
+  })
   .refine((x) => (x.purchasePrice === null) === (x.currency === null), {
     path: ["currency"],
     message: "Provide both purchase price and currency, or neither.",

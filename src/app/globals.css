@@ -2079,3 +2079,110 @@
 .foot-consent input { margin-top: .4rem; flex-shrink: 0; }
 .foot-choices input, .foot-consent input { width: 18px; height: 18px; accent-color: var(--foreground); }
 @media (min-width: 640px) { .foot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .foot-section-body { padding: 1.5rem; } }
+
+@layer components {
+  .finder-page { padding-block: 64px 96px; }
+  .finder-hero { display: grid; grid-template-columns: 1.5fr 1fr; gap: 72px; align-items: end; padding-bottom: 64px; }
+  .finder-hero h1 { font-size: clamp(52px, 6.4vw, 88px); margin-block: 16px 24px; }
+  .finder-subtitle { max-width: 570px; font-size: 18px; color: var(--muted-foreground); }
+  .finder-actions { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-top: 24px; }
+  .finder-hero-note { border-left: 1px solid var(--input-border); padding: 16px 0 16px 32px; }
+  .finder-hero-note > p:not(.eyebrow) { font-size: 26px; font-weight: 500; line-height: 1.35; margin-block: 16px; letter-spacing: -.035em; }
+  .finder-hero-note > span { display: block; color: var(--muted-foreground); max-width: 360px; margin-bottom: 24px; }
+  .finder-how { padding-block: 32px 48px; border-block: 1px solid var(--border); margin-bottom: 64px; }
+  .finder-how h2 { font-size: 26px; }
+  .finder-how ol { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; margin-top: 32px; }
+  .finder-how li > span { display: block; font-size: 13px; color: var(--muted-foreground); margin-bottom: 12px; }
+  .finder-how li strong { font-weight: 550; }
+  .finder-how li p { margin-top: 8px; color: var(--muted-foreground); font-size: 14px; }
+  .finder-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 48px; align-items: start; }
+  .finder-sidebar { padding-top: 16px; display: grid; gap: 24px; }
+  .finder-sidebar h2 { font-size: 32px; }
+  .finder-sidebar > p:not(.eyebrow) { color: var(--muted-foreground); }
+  .finder-panel, .finder-guest { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px; min-width: 0; }
+  .finder-guest { max-width: 800px; margin-inline: auto; display: grid; gap: 16px; }
+  .finder-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 28px; }
+  .finder-steps button { min-height: 68px; width: 100%; text-align: left; border-top: 2px solid var(--border); padding: 12px 4px 4px; display: grid; gap: 6px; font-size: 12px; line-height: 1.4; color: var(--muted-foreground); }
+  .finder-steps button[aria-current="step"] { border-top-color: var(--primary); color: var(--foreground); font-weight: 600; }
+  .finder-steps button:disabled { cursor: default; }
+  .finder-steps button > span:first-child { font-size: 13px; }
+  .finder-preload { font-size: 13px; color: var(--muted-foreground); padding-bottom: 24px; }
+  .finder-fieldset { display: grid; gap: 24px; min-width: 0; }
+  .finder-fieldset h2 { font-size: 25px; }
+  .finder-fieldset :is(input,select) { max-width: 100%; }
+  .finder-fieldset input, .finder-fieldset select, .finder-filter-grid select { min-height: 44px; }
+  .finder-lead { font-size: 18px; font-weight: 500; }
+  .finder-input-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+  .finder-disclosure, .finder-refinements { border-block: 1px solid var(--border); padding-block: 12px; }
+  .finder-disclosure > summary, .finder-refinements > summary { min-height: 44px; align-content: center; cursor: pointer; font-weight: 500; }
+  .finder-disclosure[open] > summary { margin-bottom: 16px; }
+  .finder-disclosure > p + p { margin-top: 12px; }
+  .finder-note { padding: 20px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+  .finder-choices { min-width: 0; }
+  .finder-choices legend { font-size: 14px; font-weight: 500; margin-bottom: 12px; }
+  .finder-choices > div { display: flex; flex-wrap: wrap; gap: 8px; }
+  .finder-choices label { min-height: 44px; border: 1px solid var(--input-border); border-radius: 6px; display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; }
+  .finder-choices label:has(input:checked) { background: var(--hover); border-color: var(--primary); }
+  .finder-check { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; min-height: 44px; }
+  .finder-check input, .finder-choices input { min-height: 20px; width: 20px; height: 20px; flex-shrink: 0; accent-color: var(--primary); margin-top: 3px; }
+  .finder-form-actions { display: flex; justify-content: space-between; align-items: center; gap: 16px; border-top: 1px solid var(--border); padding-top: 24px; }
+  .finder-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; margin-block: 16px; }
+  .finder-summary > div { min-width: 0; overflow-wrap: anywhere; }
+  .finder-summary dt { color: var(--muted-foreground); font-size: 13px; }
+  .finder-summary dd { margin-top: 4px; }
+  .finder-results { display: grid; gap: 24px; }
+  .finder-results-heading { display: flex; align-items: start; justify-content: space-between; gap: 24px; margin-top: 24px; }
+  .finder-results-heading h2 { margin-top: 12px; }
+  .finder-results-heading .finder-actions { margin-top: 0; }
+  .finder-filter-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding-block: 16px; }
+  .finder-empty { display: grid; gap: 16px; padding: 32px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+  .finder-empty .text-link { justify-self: start; }
+  .finder-result { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); overflow: hidden; min-width: 0; }
+  .finder-product { display: grid; grid-template-columns: 240px minmax(0, 1fr); }
+  .finder-product-body { padding: 28px; min-width: 0; }
+  .finder-product h3 { font-size: 23px; margin-block: 12px 8px; }
+  .finder-card-meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: 13px; color: var(--muted-foreground); }
+  .finder-status-list { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 16px; }
+  .finder-status-list span, .finder-status { border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; font-size: 13px; display: inline-block; }
+  .finder-price { margin-bottom: 16px; font-weight: 550; }
+  .finder-price small { display: block; color: var(--muted-foreground); font-weight: 400; }
+  .finder-sample-art { align-self: center; padding: 16px; }
+  .finder-sample-art .boot-art { aspect-ratio: 1; }
+  .finder-image-missing { min-height: 160px; display: grid; place-items: center; padding: 24px; color: var(--muted-foreground); font-size: 14px; border-right: 1px solid var(--border); }
+  .finder-card-actions { display: flex; flex-wrap: wrap; gap: 16px 24px; margin-top: 20px; }
+  .finder-card-actions a { min-height: 44px; align-content: center; }
+  .finder-explanation { border-top: 1px solid var(--border); }
+  .finder-explanation > summary { min-height: 56px; padding: 16px 24px; cursor: pointer; font-size: 14px; }
+  .finder-explanation > summary > span { float: right; }
+  .finder-explanation-body { display: grid; gap: 24px; padding: 8px 28px 28px; }
+  .finder-explanation h4 { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+  .finder-explanation ul { list-style: disc; padding-left: 20px; display: grid; gap: 8px; }
+  .finder-explanation-body :is(p,li,a) { overflow-wrap: anywhere; }
+  .finder-unverified { display: grid; gap: 24px; margin-top: 24px; }
+  @media (max-width: 1023px) {
+    .finder-layout { grid-template-columns: 1fr; gap: 24px; }
+    .finder-sidebar { display: none; }
+    .finder-hero { gap: 32px; }
+    .finder-results-heading { flex-direction: column; }
+  }
+  @media (max-width: 767px) {
+    .finder-page { padding-block: 32px 64px; }
+    .finder-hero { grid-template-columns: 1fr; padding-bottom: 32px; }
+    .finder-hero h1 { font-size: 56px; }
+    .finder-hero-note { display: none; }
+    .finder-how { margin-bottom: 32px; padding-bottom: 24px; }
+    .finder-how ol { grid-template-columns: 1fr; gap: 20px; }
+    .finder-how li > span { display: inline-block; margin-right: 12px; }
+    .finder-how li p { margin-top: 4px; }
+    .finder-panel, .finder-guest { padding: 20px; }
+    .finder-steps { gap: 6px; }
+    .finder-steps button { font-size: 12px; padding-inline: 0; }
+    .finder-input-grid, .finder-filter-grid, .finder-summary { grid-template-columns: 1fr; }
+    .finder-product { grid-template-columns: 1fr; }
+    .finder-sample-art { max-width: 260px; width: 100%; justify-self: center; }
+    .finder-image-missing { border-right: 0; border-bottom: 1px solid var(--border); }
+    .finder-product-body, .finder-explanation-body { padding: 20px; }
+    .finder-empty { padding: 24px; }
+    .finder-form-actions { flex-wrap: wrap; }
+  }
+}

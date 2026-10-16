@@ -359,7 +359,8 @@ export async function createReview(actor: Principal | null, input: unknown) {
       )
         throw new CommunityError(400, "Choose an existing boot variant.");
       const row = await tx.bootReview.create({
-        data: { ...data, authorId: user.id, ratingTotal: ratingTotal(data) },
+        data: { ...data, authorId: user.id, ratingTotal: ratingTotal(data),
+          analysisConsentAt: data.analysisConsent ? new Date() : null },
         select: { id: true },
       });
       return row;
@@ -401,6 +402,7 @@ export async function editReview(
       where: { id },
       data: {
         ...data,
+        analysisConsentAt: data.analysisConsent ? row.analysisConsentAt ?? new Date() : null,
         ratingTotal: ratingTotal(data),
         version: { increment: 1 },
       },

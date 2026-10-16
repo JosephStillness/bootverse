@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   criteria,
+  analysisOptions,
   footShapes,
   widthObservations,
   reviewSchema,
@@ -35,9 +36,10 @@ export function ReviewForm({
     const data: Record<string, unknown> = {
       variantId,
       shareFootInfo: f.get("shareFootInfo") === "on",
+      analysisConsent: f.get("analysisConsent") === "on",
     };
     for (const key of Object.keys(reviewSchema.shape)) {
-      if (key === "variantId" || key === "shareFootInfo") continue;
+      if (key === "variantId" || key === "shareFootInfo" || key === "analysisConsent") continue;
       data[key] = [
         ...Object.keys(criteria),
         "ownershipMonths",
@@ -262,7 +264,8 @@ export function ReviewForm({
             !!fields.footLengthCm ||
             !!fields.footWidthCm ||
             !!fields.footShape ||
-            !!fields.shareFootInfo
+            !!fields.shareFootInfo || !!fields.analysisConsent ||
+            !!fields.reviewInstep || !!fields.reviewFitSensation
           }
         >
           <summary>Optional foot information & privacy</summary>
@@ -302,6 +305,25 @@ export function ReviewForm({
             shape.
           </label>
           {error("shareFootInfo")}
+          <p className="field-help">
+            For optional reviewer matching, record the maximum length and maximum width measured across both feet. These can come from different feet.
+            Your private Foot Profile is never copied into a review.
+          </p>
+          <div className="post-form-grid">
+            {select("reviewInstep", "Self-reported instep (analysis only)", analysisOptions.reviewInstep)}
+            {select("reviewFitSensation", "Preferred fit sensation (analysis only)", analysisOptions.reviewFitSensation)}
+          </div>
+          <label className="review-consent">
+            <input type="checkbox" name="analysisConsent" defaultChecked={initial?.analysisConsent ?? false}
+              aria-invalid={!!fields.analysisConsent} aria-describedby="analysisConsent-error analysis-purpose" />{" "}
+            I authorize aggregate reviewer-profile matching and fit analysis using this review’s shared measurements, traits, size and structured ratings/observations.
+            If supplied, my length and width follow the maximum-across-both-feet method above.
+          </label>
+          <p className="field-help" id="analysis-purpose">
+            Optional and off by default. Public sharing alone does not authorize analysis. Results withhold small groups and do not guarantee fit.
+            Withdraw by unchecking this option and saving; subsequent analyses exclude this review. Public sharing above must also be enabled.
+          </p>
+          {error("analysisConsent")}
         </details>
         <details
           className="review-optional"
@@ -313,7 +335,8 @@ export function ReviewForm({
             !!fields.midfootPressure ||
             !!fields.heelLockdown ||
             !!fields.breakIn ||
-            !!fields.sizingAdvice
+            !!fields.sizingAdvice || !!fields.toeRoomCategory ||
+            !!fields.heelLockdownCategory || !!fields.breakInCategory
           }
         >
           <summary>Optional playing context & fit observations</summary>
@@ -332,6 +355,13 @@ export function ReviewForm({
               "OTHER",
             ])}
             {select("widthObservation", "Width experience", widthObservations)}
+          </div>
+
+          <p className="field-help">Optional structured categories for aggregate analysis; free text below is never mined for matching.</p>
+          <div className="post-form-grid">
+            {select("toeRoomCategory", "Structured toe-room experience", analysisOptions.toeRoomCategory)}
+            {select("heelLockdownCategory", "Structured heel-lockdown experience", analysisOptions.heelLockdownCategory)}
+            {select("breakInCategory", "Structured break-in experience", analysisOptions.breakInCategory)}
           </div>
           {textarea("toeRoom", "Toe room")}
           {textarea("midfootPressure", "Midfoot pressure")}

@@ -33,7 +33,7 @@ const text = (max: number) => z.string().trim().max(max).nullable().optional().t
 const choice = <T extends readonly [string, ...string[]]>(values: T) => z.enum(values).nullable().default(null);
 const unique = z.array(z.string().min(1).max(30)).max(12).refine(x => new Set(x).size === x.length, "Choose each preference once.").default([]);
 const currencies = new Set<string>(currencyCodes);
-export const footProfileSchema = z.object({
+export const footProfileBaseSchema = z.object({
   version: z.number().int().nonnegative(),
   revision: z.string().min(1).max(50).nullable().default(null),
   unit: z.enum(["mm", "cm"]).default("mm"),
@@ -50,7 +50,8 @@ export const footProfileSchema = z.object({
   sizeWorn: text(8).refine(v => v === null || (/^\d{1,2}(\.\d{1,2})?$/.test(v) && Number(v) > 0 && Number(v) <= 60), "Use a size above 0 and no more than 60; no automatic size conversion is applied."),
   sizeSystem: choice(["US", "UK", "EU", "CM"]),
   allowFitFinder: z.boolean().default(false),
-}).strict().superRefine((v, ctx) => {
+}).strict();
+export const footProfileSchema = footProfileBaseSchema.superRefine((v, ctx) => {
   for (const key of measurementKeys) {
     if (v[key] === null) continue;
     try {

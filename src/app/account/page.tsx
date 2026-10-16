@@ -47,6 +47,8 @@ export default async function Account() {
         <ImageManager kind="AVATAR" id={profile.id} editable />
         <ProfileForm profile={profile} />
         <Link className="text-link" href="/profile/foot-profile">My private foot profile</Link>
+        <Link className="text-link" href="/boot-fit-finder">Boot Fit Finder</Link>
+        <Link className="text-link" href="/boot-fit/preview">Recommendation engine preview</Link>
         <Link className="text-link" href="/account/creator">Manage creator profile</Link>
         {user.role !== "USER" && <Link className="text-link" href="/admin">Moderation dashboard</Link>}
       </section>

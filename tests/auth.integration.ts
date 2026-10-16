@@ -7,6 +7,10 @@ import { once } from "node:events";
 import { createServer } from "node:net";
 import { SMTPServer } from "smtp-server";
 import pg from "pg";
+import { recommendationPerformanceTests } from "./recommendation-performance.integration";
+import { finderTests } from "./finder.integration";
+import { reviewAnalysisTests } from "./review-analysis.integration";
+import { recommendationTests } from "./recommendations.integration";
 import { footProfileTests } from "./foot-profile.integration";
 import { reviewsTests } from "./reviews.integration";
 import { interactionsTests } from "./interactions.integration";
@@ -113,6 +117,7 @@ test(
       EMAIL_SERVER: `smtp://127.0.0.1:${smtpPort}`,
       EMAIL_FROM: "BootVerse <noreply@bootverse.local>",
       NODE_ENV: "production",
+      BOOT_FIT_TIMING_LOGS: process.env.BOOTVERSE_BENCHMARK === "1" ? "1" : "0",
     };
     if(process.env.BOOTVERSE_TEST_STORAGE === "1") {
       assert.ok(env.S3_ENDPOINT && ["localhost","127.0.0.1"].includes(new URL(env.S3_ENDPOINT).hostname), "Platform tests require local S3 storage.");
@@ -529,6 +534,10 @@ test(
       await interactionsTests(t, { db, base, alice, bob, aliceId, bobId });
       await reviewsTests(t, { db, base, alice, bob, aliceId, bobId });
       await footProfileTests(t, { db, base, alice, bob, aliceId, bobId });
+      await recommendationTests(t, { db, base, alice, bob, aliceId });
+      await reviewAnalysisTests(t, { db, alice, bob, aliceId, bobId, secret: env.AUTH_SECRET! });
+      await finderTests(t, { db, base, alice, bob, aliceId, bobId, secret: env.AUTH_SECRET! });
+      if(process.env.BOOTVERSE_BENCHMARK === "1") await recommendationPerformanceTests(t,{db,alice,aliceId,secret:env.AUTH_SECRET!});
       if (testStorage) await platformTests(t, { db, base, alice, bob, aliceId, bobId, env });
       await t.test(
         "expired sessions and concurrent unique-username updates",
@@ -769,6 +778,15 @@ test(
           }
         },
       );
+      if(process.env.BOOTVERSE_BENCHMARK === "1") {
+        const events=appOutput.split("\n").filter(line=>line.startsWith('{"event":"boot_fit_request"')).map(line=>JSON.parse(line));
+        assert.ok(events.some(event=>event.category === "success"));
+        assert.ok(events.some(event=>event.category === "database" && event.status === 503));
+        for(const event of events){
+          assert.deepEqual(Object.keys(event).sort(),["category","durationMs","entryPoint","event","requestId","stages","status"]);
+          assert.match(event.requestId,/^[\da-f-]{36}$/);
+        }
+      }
       const warnings = appOutput
         .split("\n")
         .filter((line) => line.includes("DeprecationWarning:"));

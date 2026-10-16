@@ -132,6 +132,7 @@ model BootVariant {
   tier         BootTier         @relation(fields: [tierModelId, generationId], references: [id, generationId], onDelete: Restrict, onUpdate: Restrict)
   entries      CatalogueEntry[]
   reviews      BootReview[]
+  recommendationEvidence RecommendationEvidence[]
 
   @@unique([id, generationId])
   @@index([tierModelId])
@@ -286,6 +287,13 @@ model BootReview {
   footWidthCm      Decimal?            @db.Decimal(4, 1)
   footShape        String?             @db.VarChar(20)
   shareFootInfo    Boolean             @default(false)
+  analysisConsent Boolean @default(false)
+  analysisConsentAt DateTime? @db.Timestamptz(3)
+  reviewInstep String? @db.VarChar(16)
+  reviewFitSensation String? @db.VarChar(20)
+  toeRoomCategory String? @db.VarChar(16)
+  heelLockdownCategory String? @db.VarChar(16)
+  breakInCategory String? @db.VarChar(24)
   position         String?             @db.VarChar(50)
   playingSurface   String?             @db.VarChar(4)
   widthObservation String?             @db.VarChar(30)
@@ -306,6 +314,7 @@ model BootReview {
   videos           CreatorVideo[]
 
   @@unique([authorId, variantId])
+  @@index([variantId, status, analysisConsent, id])
   @@index([variantId, status, createdAt, id])
   @@index([variantId, status, ratingTotal, createdAt, id])
   @@index([authorId, status, createdAt, id])
@@ -531,4 +540,22 @@ model FootProfile {
   version            Int      @default(1)
   createdAt          DateTime @default(now()) @db.Timestamptz(3)
   updatedAt          DateTime @updatedAt @db.Timestamptz(3)
+}
+
+// Operator-curated public product evidence. Never contains private user/profile data.
+model RecommendationEvidence {
+  id            String @id @default(cuid())
+  variantId     String
+  variant       BootVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  kind          String @db.VarChar(20)
+  sourceKind    String @db.VarChar(20)
+  sourceUrl     String @db.VarChar(2000)
+  observedAt    DateTime @db.Timestamptz(3)
+  validUntil    DateTime @db.Timestamptz(3)
+  payload       Json
+  approved      Boolean @default(false)
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([variantId, approved, observedAt])
 }
