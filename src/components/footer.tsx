@@ -31,7 +31,7 @@ export function Footer() {
         </div>
         <div className="footer-bottom">
           <span>© 2026 BootVerse</span>
-          <span>Sample data. Product details are unverified.</span>
+          <span>Samples are labeled. Unknown details stay unknown.</span>
         </div>
       </div>
     </footer>

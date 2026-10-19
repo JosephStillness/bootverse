@@ -1,3 +1,4 @@
+import { CompareButton } from "./comparison/selection";
 import Link from "next/link";
 import type { CatalogueBoot } from "@/lib/boots/types";
 import { ArrowUpRightIcon } from "./icons";
@@ -18,13 +19,13 @@ export function BootCard({
       <Link
         href={href}
         className="boot-card-link group"
-        aria-label={`${boot.brand.name} ${boot.family.name} ${boot.tier.name}, ${boot.generation.name}, ${boot.variant.surface ?? "unknown surface"}, ${boot.colorway.name}, sample entry`}
+        aria-label={`${boot.brand.name} ${boot.family.name} ${boot.tier.name}, ${boot.generation.name}, ${boot.variant.surface ?? "unknown surface"}, ${boot.colorway.name}${boot.sample?", sample entry":""}`}
       >
-        <BootArt sizes={sizes} />
+        {boot.sample?<BootArt sizes={sizes} />:<div className="finder-image-missing">No verified product image</div>}
         <div className="card-content">
           <div className="card-meta">
             <span>{boot.brand.name}</span>
-            <Badge variant="outline">Sample</Badge>
+            {boot.sample&&<Badge variant="outline">Sample</Badge>}
           </div>
           <div className="card-title">
             <h3>
@@ -47,10 +48,11 @@ export function BootCard({
             </span>
           </div>
           <p className="art-disclaimer">
-            Concept artwork. Specifications unknown.
+            {boot.sample?"Concept artwork. Specifications unknown.":"See sourced specifications and unknowns."}
           </p>
         </div>
       </Link>
+      <CompareButton entry={{entryId:boot.id,variantId:boot.variant.id,label:`${boot.brand.name} ${boot.family.name} ${boot.generation.name} ${boot.tier.name} ${boot.variant.surface??"Unknown surface"}`}}/>
     </article>
   );
 }

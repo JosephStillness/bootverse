@@ -24,7 +24,9 @@
     "test:platform": "BOOTVERSE_TEST_STORAGE=1 tsx --test tests/auth.integration.ts",
     "dev:local": "tsx scripts/local.mts dev",
     "db:local": "tsx scripts/local.mts migrate",
-    "test:platform:local": "tsx scripts/local.mts test"
+    "test:platform:local": "tsx scripts/local.mts test",
+    "test:browser": "tsx scripts/browser-regressions.mts",
+    "test:browser:serve": "node scripts/browser-qa.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

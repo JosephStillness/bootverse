@@ -14,6 +14,7 @@ import { recommendationTests } from "./recommendations.integration";
 import { footProfileTests } from "./foot-profile.integration";
 import { reviewsTests } from "./reviews.integration";
 import { interactionsTests } from "./interactions.integration";
+import {catalogueTests} from "./catalogue.integration";
 import { communityTests } from "./community.integration";
 import { platformTests } from "./platform.integration";
 import { S3Client, CreateBucketCommand, ListObjectsV2Command, DeleteObjectsCommand, DeleteBucketCommand } from "@aws-sdk/client-s3";
@@ -145,7 +146,7 @@ test(
       const catalogue = spawn(
         process.execPath,
         ["--import", "tsx", "scripts/import-catalogue.mts"],
-        { env, stdio: "pipe" },
+        { env:{...env,NODE_ENV:"test"}, stdio: "pipe" },
       );
       catalogue.stdout?.resume();
       catalogue.stderr?.resume();
@@ -530,6 +531,7 @@ test(
           }
         },
       );
+      await catalogueTests(t,{db,base});
       await communityTests(t, { alice, bob, db, base, aliceId, bobId });
       await interactionsTests(t, { db, base, alice, bob, aliceId, bobId });
       await reviewsTests(t, { db, base, alice, bob, aliceId, bobId });

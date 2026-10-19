@@ -55,7 +55,7 @@ describe("boot data validation", () => {
   });
   it("rejects unknown attributes without an explanation and invalid slugs", () => {
     const data = copy();
-    data.entries[0].specifications.weight.reason = "";
+    data.entries[0].specifications.weight = {status:"unknown",reason:""};
     data.entries[0].slug = "../boot";
     expect(validateBootData(data).join(" ")).toContain(
       "Unverified sample attribute",

@@ -4,7 +4,7 @@ export function SampleNotice() {
     <aside className="sample-notice">
       <InfoIcon size={19} aria-hidden="true" />
       <p>
-        <strong>Sample catalogue.</strong> All configurations are unverified.
+        <strong>Sample records are labeled.</strong> Sample configurations are unverified.
         Concept artwork does not depict the listed boots.
       </p>
     </aside>

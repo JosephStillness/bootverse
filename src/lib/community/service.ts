@@ -30,6 +30,7 @@ const bootSelect = {
   id: true,
   slug: true,
   sample: true,
+  published: true,
   colorway: { select: { name: true } },
   variant: {
     select: {
@@ -64,6 +65,7 @@ export function bootReference(boot: BootRow) {
 export type BootReference = ReturnType<typeof bootReference>;
 export async function catalogueReferences() {
   const rows = await getDb().catalogueEntry.findMany({
+    where:{published:true},
     select: bootSelect,
     orderBy: { slug: "asc" },
   });
@@ -96,7 +98,7 @@ function postDTO(post: PostRow) {
     ...post,
     author: authorDTO(post.author),
     tags: post.tags.map((row) => row.tag.name),
-    boot: post.boot ? bootReference(post.boot) : null,
+    boot: post.boot?.published ? bootReference(post.boot) : null,
     excerpt: postExcerpt(post.content),
   };
 }
@@ -233,7 +235,7 @@ async function validateBoot(
   if (
     bootEntryId &&
     !(await tx.catalogueEntry.findUnique({
-      where: { id: bootEntryId },
+      where: { id: bootEntryId,published:true },
       select: { id: true },
     }))
   )

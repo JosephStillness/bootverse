@@ -22,6 +22,7 @@ export interface Preferences {
 export type FactorName="budget"|"fit"|"brandTier"|"other";
 export type Factor={name:FactorName;weight:number;applicable:boolean;match:number|null;reason:string};
 export interface Result {
+  catalogue?:{entryId:string;slug:string;variantId:string;generationId:string;colorwayId:string;brandId:string;tier:string;outsole:Surface|null};
   brandId:string;brand:string;generation:string;
   variantId:string;generationId:string;productName:string;tier:string;outsole:Surface|null;
   entry:Candidate["entry"];sample:boolean;surfaceStatus:"compatible"|"incompatible"|"unknown";

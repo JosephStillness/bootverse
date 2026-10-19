@@ -123,7 +123,13 @@ export async function platformTests(t:TestContext,{db,base,alice,bob,aliceId,bob
  await t.test("platform: comments, reviews, images and creator reports all support moderation",async()=>{
   await db.query('INSERT INTO "Comment"(id,"postId","authorId",content,"updatedAt") VALUES ($1,$2,$3,$4,now())',["qa-platform-comment",postId,aliceId,"Disposable moderation test comment"]);
   const review=await write(bob,"/api/reviews",{variantId:"mercurial-elite-fg",sizeWorn:"9",sizeSystem:"UK",ownershipMonths:2,matchesPlayed:5,experience:"Disposable QA review used only to verify moderation behavior.",pros:"Temporary QA pros",cons:"Temporary QA cons",comfort:4,fit:4,traction:4,ballTouch:4,durability:4,value:4});assert.equal(review.status,201);const reviewId=(await review.json()).review.id;
-  assert.equal((await upload(bob,"REVIEW",reviewId)).status,201);
+  const reviewUpload=await upload(bob,"REVIEW",reviewId);assert.equal(reviewUpload.status,201);const reviewImage=(await reviewUpload.json()).image.id;
+  try{
+   await db.query(`UPDATE "CatalogueEntry" SET published=false WHERE "outsoleVariantId"='mercurial-elite-fg'`);
+   assert.equal((await fetch(base+`/api/reviews/${reviewId}`)).status,404);
+   assert.equal((await fetch(base+`/api/images/${reviewImage}`)).status,404);
+   assert.equal((await bob.request(`/api/images/${reviewImage}`)).status,200);
+  }finally{await db.query(`UPDATE "CatalogueEntry" SET published=true WHERE "outsoleVariantId"='mercurial-elite-fg'`);}
   for(const [kind,id] of [["COMMENT","qa-platform-comment"],["REVIEW",reviewId],["IMAGE",imageId],["CREATOR",creatorId]]){
    const r=await write(alice,"/api/reports",{kind,id,reason:"other",explanation:"Disposable QA report only."});assert.equal(r.status,201);const rid=(await r.json()).report.id;
    await db.query('UPDATE "User" SET role=$1 WHERE id=$2',["MODERATOR",bobId]);

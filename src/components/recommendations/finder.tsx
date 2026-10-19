@@ -18,10 +18,11 @@ export function BootFitFinder({authenticated}:{authenticated:boolean}) {
  const [fields,setFields]=useState<FieldErrors>({}),[error,setError]=useState(''),[saveMessage,setSaveMessage]=useState('');
  const [processingConsent,setProcessingConsent]=useState(false),[save,setSave]=useState(false),[busy,setBusy]=useState(false);
  const [output,setOutput]=useState<EngineOutput|null>(null),[submitted,setSubmitted]=useState<FinderValues|null>(null);
+ const profileRequest=useRef<AbortController|null>(null);
  const busyRef=useRef(false),stepHeading=useRef<HTMLHeadingElement>(null);
  useEffect(()=>{
   if(!authenticated)return;
-  const controller=new AbortController();
+  const controller=new AbortController();profileRequest.current=controller;
   loadFinderProfile(controller.signal).then(data=>{if(!controller.signal.aborted){setProfile(data.profile);setValues(data.profile?finderFromProfile(data.profile):emptyFinder());setProfileState('ready');setCanSaveProfile(true);}}).catch(()=>{if(!controller.signal.aborted)setProfileState('error');});
   return()=>controller.abort();
  },[authenticated,loadAttempt]);
@@ -35,6 +36,7 @@ export function BootFitFinder({authenticated}:{authenticated:boolean}) {
  const currentErrors=Object.keys(fields).length?finderStepErrors(values,3):{};
  const displayedFields:FieldErrors=Object.fromEntries(Object.entries(fields).filter(([key])=>key==='processingConsent'?!processingConsent:!!currentErrors[key]));
  const displayedError=error==='Check the highlighted fields before continuing.'&&!Object.keys(displayedFields).length?'':error;
+ function continueManually(){profileRequest.current?.abort();setProfile(null);setValues(emptyFinder());setCanSaveProfile(false);setSave(false);setProfileState('ready');setStarted(true);}
  function edit(){if(busyRef.current)return;setOutput(null);setStep(0);setStarted(true);setError('');setFields({});}
  function invalid(errors:FieldErrors){setFields(errors);setError('Check the highlighted fields before continuing.');setStarted(true);const first=Object.keys(errors)[0];const target=finderStepKeys.findIndex(keys=>keys.includes(first));if(target>=0)setStep(target);}
  async function execute(input:FinderValues,saveProfile:boolean){
@@ -66,7 +68,7 @@ export function BootFitFinder({authenticated}:{authenticated:boolean}) {
     <div className="finder-layout"><aside className="finder-sidebar"><p className="eyebrow">YOUR STARTING POINT</p><h2>Four steps.<br/>No guesswork.</h2><p>Only playing surface and permission to process your inputs are required. Add details for more useful evidence.</p><p>Optional measurements do not establish a boot size. We never infer wide-foot suitability from a label.</p><Link className="text-link" href="/profile/foot-profile">Manage private foot profile</Link><p className="field-help">No measurements in URLs or analytics. Saving your preferences is a separate choice.</p></aside>
      <section className="finder-panel" aria-label="Guided boot finder" aria-busy={busy||profileState==='loading'}>
       <ol className="finder-steps" aria-label="Finder progress">{steps.map((label,index)=><li key={label}><button type="button" disabled={busy||index>step} aria-label={`Step ${index+1}: ${label}`} aria-current={step===index?'step':undefined} onClick={()=>{setStep(index);setFields({});setError('');setStarted(true);}}><span aria-hidden="true">{String(index+1).padStart(2,'0')}</span><span>{['Measure','Play','Budget','Review'][index]}</span></button></li>)}</ol>
-      {profileState==='loading'?<p className="finder-note" role="status">Loading your private saved profile…</p>:profileState==='error'?<div className="finder-note" role="alert"><p>Your saved profile could not be loaded. We have not replaced any of your data.</p><div className="finder-actions"><Button onClick={()=>{setProfileState('loading');setCanSaveProfile(false);setLoadAttempt(n=>n+1);}}>Retry profile loading</Button><Button variant="outline" onClick={()=>{setProfileState('ready');setSave(false);}}>Continue without saving</Button></div></div>:<>
+      {profileState==='loading'?<div className="finder-note"><p role="status">Loading your private saved profile…</p><Button variant="outline" onClick={continueManually}>Continue manually without saving</Button></div>:profileState==='error'?<div className="finder-note" role="alert"><p>Your saved profile could not be loaded. We have not replaced any of your data.</p><p>If your session expired, <Link className="text-link" href="/login?callbackUrl=%2Fboot-fit-finder">sign in again</Link>.</p><div className="finder-actions"><Button onClick={()=>{setProfileState('loading');setCanSaveProfile(false);setLoadAttempt(n=>n+1);}}>Retry profile loading</Button><Button variant="outline" onClick={continueManually}>Continue manually without saving</Button></div></div>:<>
        <p className="finder-preload" role="status">{!canSaveProfile?'Continuing without loading saved data. Saving is disabled; your existing profile has not changed.':profile?'Your own saved preferences were preloaded. Changes stay on this page until you explicitly choose to save.':'No saved foot profile. You can run a private search without creating one.'}</p>
        <form method="post" noValidate onSubmit={submit}>
         <fieldset disabled={busy} className="finder-fieldset"><legend className="sr-only">Your boot-finding preferences</legend>

@@ -157,12 +157,15 @@ model CatalogueEntry {
   colorwayId       String
   generationId     String
   sample           Boolean      @default(true)
+  published        Boolean      @default(false)
+  specifications   Json         @default("{}")
   variant          BootVariant  @relation(fields: [outsoleVariantId, generationId], references: [id, generationId], onDelete: Restrict, onUpdate: Restrict)
   colorway         BootColorway @relation(fields: [colorwayId, generationId], references: [id, generationId], onDelete: Restrict, onUpdate: Restrict)
   posts            Post[]
 
   @@unique([outsoleVariantId, colorwayId])
   @@index([colorwayId])
+  @@index([published, id])
 }
 
 model PostCategory {

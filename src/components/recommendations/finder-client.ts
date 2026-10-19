@@ -9,7 +9,12 @@ async function responseData<T>(response:Response):Promise<T> {
  return data as T;
 }
 export async function loadFinderProfile(signal:AbortSignal) {
- return responseData<{profile:PrivateFootProfile|null}>(await fetch('/api/account/foot-profile',{cache:'no-store',signal}));
+ try {
+  return await responseData<{profile:PrivateFootProfile|null}>(await fetch('/api/account/foot-profile',{cache:'no-store',signal:AbortSignal.any([signal,AbortSignal.timeout(10_000)])}));
+ } catch(error) {
+  if(error instanceof DOMException&&error.name==='TimeoutError')throw Error('Your saved profile took too long to load. Retry or continue manually without saving.');
+  throw error;
+ }
 }
 export async function runFinder(values:FinderValues) {
  try {

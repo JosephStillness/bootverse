@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { criteria } from "@/lib/reviews/validation";
@@ -35,6 +35,7 @@ export function ReviewList({
     summary?: ReviewSummary;
     error?: string;
   }>();
+  const summaryCache=useRef<{key:string;summary:ReviewSummary}|null>(null);
   const [retry, setRetry] = useState(0);
   const query = new URLSearchParams({
     ...(variantId ? { variant: variantId } : {}),
@@ -53,11 +54,12 @@ export function ReviewList({
   const key = query.toString() + `&retry=${retry}`;
   useEffect(() => {
     const controller = new AbortController();
+    const summaryKey=`${variantId}:${retry}`;
     async function load() {
       try {
         const [response, aggregate] = await Promise.all([
           fetch(`/api/reviews?${key}`, { signal: controller.signal }),
-          variantId
+          variantId&&summaryCache.current?.key!==summaryKey
             ? fetch(
                 `/api/boot-variants/${encodeURIComponent(variantId)}/ratings`,
                 { signal: controller.signal },
@@ -69,8 +71,8 @@ export function ReviewList({
         const list: List = await response.json(),
           summary: ReviewSummary | undefined = aggregate
             ? await aggregate.json()
-            : undefined;
-        if (!controller.signal.aborted) setResult({ key, list, summary });
+            : summaryCache.current?.key===summaryKey?summaryCache.current.summary:undefined;
+        if (!controller.signal.aborted){if(summary)summaryCache.current={key:summaryKey,summary};setResult({ key, list, summary });}
       } catch (e) {
         if (!controller.signal.aborted)
           setResult({
@@ -81,7 +83,7 @@ export function ReviewList({
     }
     void load();
     return () => controller.abort();
-  }, [key, variantId]);
+  }, [key, variantId, retry]);
   const loading = result?.key !== key;
   const summary = result?.summary;
   function change(name: string, value: string) {
@@ -113,6 +115,7 @@ export function ReviewList({
           specifications or fit recommendations.
         </p>
       )}
+      {summary?.options.sizesTruncated&&<p className="field-help">Showing the first 200 worn-size filter options. Other sizes remain accessible through the review API.</p>}
       {summary && (
         <div className="review-summary">
           <div>

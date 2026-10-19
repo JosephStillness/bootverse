@@ -17,6 +17,7 @@ import {
   type Criterion,
 } from "./validation";
 const visible = {
+  variant:{entries:{some:{published:true}}},
   status: "PUBLISHED",
   author: {
     status: "ACTIVE",
@@ -62,6 +63,7 @@ const select = {
   variant: {
     select: {
       entries: {
+        where:{published:true},
         select: { slug: true, sample: true },
         orderBy: { slug: "asc" },
         take: 1,
@@ -209,7 +211,7 @@ export async function reviewSummary(variantId: string) {
     async (tx) => {
       if (
         !(await tx.bootVariant.findUnique({
-          where: { id: variantId },
+          where: { id: variantId,entries:{some:{published:true}} },
           select: { id: true },
         }))
       )
@@ -239,26 +241,10 @@ export async function reviewSummary(variantId: string) {
           .filter((g) => Math.round(g.ratingTotal / 6) === star)
           .reduce((n, g) => n + g._count, 0),
       }));
-      const options = await tx.bootReview.findMany({
-        where,
-        select: {
-          sizeWorn: true,
-          sizeSystem: true,
-          playingSurface: true,
-          ownershipMonths: true,
-        },
-        distinct: [
-          "sizeWorn",
-          "sizeSystem",
-          "playingSurface",
-          "ownershipMonths",
-        ],
-      });
-      const shapes = await tx.bootReview.findMany({
-        where: { ...where, shareFootInfo: true, footShape: { not: null } },
-        select: { footShape: true },
-        distinct: ["footShape"],
-      });
+      const sizes = await tx.bootReview.groupBy({where,by:["sizeSystem","sizeWorn"],orderBy:[{sizeSystem:"asc"},{sizeWorn:"asc"}],take:201});
+      const surfaces = await tx.bootReview.groupBy({where,by:["playingSurface"],orderBy:{playingSurface:"asc"},take:6});
+      const durations = await tx.bootReview.groupBy({where,by:["ownershipMonths"],orderBy:{ownershipMonths:"asc"},take:601});
+      const shapes = await tx.bootReview.groupBy({where:{...where,shareFootInfo:true,footShape:{not:null}},by:["footShape"],orderBy:{footShape:"asc"},take:4});
       return {
         count: aggregate._count,
         overall:
@@ -274,19 +260,20 @@ export async function reviewSummary(variantId: string) {
         distribution,
         options: {
           sizes: [
-            ...new Set(options.map((o) => `${o.sizeSystem}:${o.sizeWorn}`)),
+            ...new Set(sizes.slice(0,200).map((o) => `${o.sizeSystem}:${o.sizeWorn}`)),
           ].sort(),
+          sizesTruncated:sizes.length>200,
           shapes: shapes.map((x) => x.footShape!),
           surfaces: [
             ...new Set(
-              options
+              surfaces
                 .map((o) => o.playingSurface)
                 .filter((x): x is string => x !== null),
             ),
           ].sort(),
           durations: [
             ...new Set(
-              options.map((o) =>
+              durations.map((o) =>
                 o.ownershipMonths < 3
                   ? "under-3"
                   : o.ownershipMonths <= 12
@@ -353,7 +340,7 @@ export async function createReview(actor: Principal | null, input: unknown) {
       const user = await lockedActiveUser(tx, actor);
       if (
         !(await tx.bootVariant.findUnique({
-          where: { id: data.variantId },
+          where: { id: data.variantId,entries:{some:{published:true}} },
           select: { id: true },
         }))
       )

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { currencyCodes } from "./currencies";
-import { bootData } from "@/lib/boots/data";
+import {preferenceBrands,preferenceTiers} from "@/lib/boots/labels";
 
 // Broad input-error guardrails, not medical ranges or fit classifications. Adjust centrally.
 export const measurementLimits = { length: { min: 80, max: 400 }, width: { min: 30, max: 180 } } as const;
@@ -14,8 +14,8 @@ export const footOptions = {
   snugness: ["Snug", "Balanced", "Relaxed", "Unsure"],
   fitSensation: ["Barefoot-like", "Cushioned", "Structured", "Unsure"],
 } as const;
-export const brandOptions = bootData.brands;
-export const tierOptions = [...new Set(bootData.tiers.map(t => t.name))];
+export const brandOptions = preferenceBrands;
+export const tierOptions = preferenceTiers;
 export type Unit = "mm" | "cm";
 export const measurementKeys = ["leftLengthMm", "rightLengthMm", "leftWidthMm", "rightWidthMm"] as const;
 export function convertMeasurement(value: string, from: Unit, to: Unit): string {

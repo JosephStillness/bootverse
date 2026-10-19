@@ -1,6 +1,7 @@
 export const surfaces = ["FG", "AG", "SG", "TF"] as const;
 export type Surface = (typeof surfaces)[number];
 export type UnknownAttribute = { status: "unknown"; reason: string };
+export type ProductAttribute = UnknownAttribute | {status:"verified";value:string;sourceUrl:string;observedAt:string};
 export interface Brand {
   id: string;
   name: string;
@@ -36,15 +37,15 @@ export interface BootEntry {
   slug: string;
   outsoleVariantId: string;
   colorwayId: string;
-  sample: true;
+  sample: boolean;
   specifications: {
-    weight: UnknownAttribute;
-    upper: UnknownAttribute;
-    releaseDate: UnknownAttribute;
-    price: UnknownAttribute;
-    fit: UnknownAttribute;
-    rating: UnknownAttribute;
-    endorsements: UnknownAttribute;
+    weight: ProductAttribute;
+    upper: ProductAttribute;
+    releaseDate: ProductAttribute;
+    price: ProductAttribute;
+    fit: ProductAttribute;
+    rating: ProductAttribute;
+    endorsements: ProductAttribute;
   };
 }
 export interface BootData {
@@ -57,6 +58,7 @@ export interface BootData {
   entries: BootEntry[];
 }
 export interface CatalogueBoot extends BootEntry {
+  offers?:{amount:string;currency:string;size:string|null;sizeSystem:string|null;sourceUrl:string;observedAt:string}[];
   brand: Brand;
   family: BootFamily;
   generation: ModelGeneration;

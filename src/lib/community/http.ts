@@ -1,4 +1,5 @@
 import "server-only";
+import {serviceFailure} from "@/lib/observability/failure";
 import { ZodError } from "zod";
 import { currentUser } from "@/lib/accounts/service";
 import { AccessError, requireActiveUser } from "@/lib/accounts/authorization";
@@ -19,10 +20,10 @@ export function communityFailure(error: unknown) {
       },
       { status: 400 },
     );
-  return Response.json(
+  return serviceFailure(Response.json(
     { error: "Community services are unavailable. Please try again later." },
     { status: 503 },
-  );
+  ),error);
 }
 export async function mutationInput(
   request: Request,

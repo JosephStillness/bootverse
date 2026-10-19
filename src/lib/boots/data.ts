@@ -1,3 +1,4 @@
+import {preferenceBrands} from "./labels";
 import type { BootData, CatalogueBoot, UnknownAttribute } from "./types";
 import { validateBootData } from "./validation";
 
@@ -17,12 +18,7 @@ const specifications = {
 
 // These configurations are fictional fixtures, not manufacturer specifications.
 export const bootData: BootData = {
-  brands: [
-    { id: "nike", name: "Nike" },
-    { id: "adidas", name: "adidas" },
-    { id: "puma", name: "PUMA" },
-    { id: "mizuno", name: "Mizuno" },
-  ],
+  brands: preferenceBrands,
   families: [
     { id: "mercurial", brandId: "nike", name: "Mercurial" },
     { id: "predator", brandId: "adidas", name: "Predator" },

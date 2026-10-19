@@ -15,9 +15,9 @@ export async function targetInfo(db: Db, kind: TargetKind, id: string) {
             return { ownerId: r.authorId, published: r.status === "PUBLISHED" && active(r.author), label: r.title, excerpt: r.content.slice(0, 1000), href: `/community/${r.slug}` };
     }
     else if (kind === "REVIEW") {
-        const r = await db.bootReview.findUnique({ where: { id }, select: { authorId: true, status: true, experience: true, author: { select: userSelect } } });
+        const r = await db.bootReview.findUnique({ where: { id }, select: { authorId: true, status: true, experience: true, variant:{select:{entries:{where:{published:true},take:1,select:{id:true}}}}, author: { select: userSelect } } });
         if (r)
-            return { ownerId: r.authorId, published: r.status === "PUBLISHED" && active(r.author), label: "Boot review", excerpt: r.experience.slice(0, 1000), href: `/reviews/${id}` };
+            return { ownerId: r.authorId, published: r.status === "PUBLISHED" && active(r.author) && r.variant.entries.length>0, label: "Boot review", excerpt: r.experience.slice(0, 1000), href: `/reviews/${id}` };
     }
     else if (kind === "COMMENT") {
         const r = await db.comment.findUnique({ where: { id }, select: { authorId: true, status: true, deletedAt: true, content: true, author: { select: userSelect }, post: { select: { slug: true, status: true, author: { select: userSelect } } } } });

@@ -1,9 +1,8 @@
 "use client";
+import {useEffect,useState} from "react";
 import { useSearchParams } from "next/navigation";
 import type { CatalogueBoot } from "@/lib/boots/types";
-import { surfaceLabels } from "@/lib/boots/labels";
 import {
-  filterBoots,
   parseFilters,
   type CatalogueFilters,
 } from "@/lib/boots/catalogue";
@@ -72,33 +71,22 @@ function FilterFields({
   );
 }
 
-export function Catalogue({ boots }: { boots: CatalogueBoot[] }) {
+export function Catalogue({ initial, initialQuery, options }: {initial:{boots:CatalogueBoot[];total:number;page:number;pages:number};initialQuery:string;options:FilterOptions}) {
   const searchParams = useSearchParams();
-  const filters = parseFilters(new URLSearchParams(searchParams.toString()));
-  const results = filterBoots(boots, filters);
-  const unique = (values: { value: string; label: string }[]) => [
-    ...new Map(values.map((value) => [value.value, value])).values(),
-  ];
-  const options: FilterOptions = {
-    brand: unique(
-      boots.map((boot) => ({ value: boot.brand.id, label: boot.brand.name })),
-    ),
-    silo: unique(
-      boots.map((boot) => ({ value: boot.family.id, label: boot.family.name })),
-    ),
-    tier: unique(
-      boots.map((boot) => ({ value: boot.tier.name, label: boot.tier.name })),
-    ),
-    surface: [
-      ...Object.entries(surfaceLabels).map(([value, label]) => ({
-        value,
-        label: `${value} · ${label}`,
-      })),
-      { value: "unknown", label: "Unknown surface" },
-    ],
-  };
+  const query=searchParams.toString();
+  const filters = parseFilters(new URLSearchParams(query));
+  const [remote,setRemote]=useState<{query:string;data:typeof initial}|null>(null),[failure,setFailure]=useState<{query:string;message:string}|null>(null),[retry,setRetry]=useState(0);
+  useEffect(()=>{
+    if(query===initialQuery)return;
+    const controller=new AbortController();
+    fetch(`/api/boots?${query}`,{signal:AbortSignal.any([controller.signal,AbortSignal.timeout(15_000)])}).then(async r=>{const data=await r.json();if(!r.ok)throw Error(data.error??'Catalogue unavailable.');if(!controller.signal.aborted){setRemote({query,data});setFailure(null);}}).catch(()=>{if(!controller.signal.aborted)setFailure({query,message:'The catalogue could not be loaded. Please retry.'});});
+    return()=>controller.abort();
+  },[query,initialQuery,retry]);
+  const data=query===initialQuery?initial:remote?.query===query?remote.data:null;
+  const results=data?.boots??[],loading=!data&&failure?.query!==query;
   function update(key: keyof CatalogueFilters, value: string) {
     const params = new URLSearchParams(window.location.search);
+    params.delete("page");
     const param = key === "query" ? "q" : key;
     if (!value || (key === "sort" && value === "featured"))
       params.delete(param);
@@ -148,25 +136,24 @@ export function Catalogue({ boots }: { boots: CatalogueBoot[] }) {
             update={update}
           />
           <p className="filter-help">
-            Surface and tier assignments are illustrative in this sample
-            catalogue.
+            Sample configurations remain clearly labeled. Compare exact tiers and outsoles.
           </p>
         </aside>
         <div className="catalogue-results">
           <div className="results-toolbar">
             <p role="status" aria-live="polite">
-              <strong>{results.length}</strong>{" "}
+              <strong>{data?.total??0}</strong>{" "}
               {results.length === 1 ? "boot" : "boots"}
               <span className="text-muted-foreground">
                 {" "}
-                / {boots.length} samples
+                published configurations
               </span>
             </p>
             <div className="results-actions">
               <div className="mobile-filter-trigger">
                 <Sheet
                   title="Filters"
-                  description="Refine the sample catalogue. Changes apply immediately."
+                  description="Refine the published catalogue. Changes apply immediately."
                   trigger={
                     <Button variant="outline">
                       <SlidersHorizontalIcon size={18} aria-hidden="true" />
@@ -243,7 +230,7 @@ export function Catalogue({ boots }: { boots: CatalogueBoot[] }) {
             </div>
           )}
           <h2 className="sr-only">Catalogue results</h2>
-          {results.length ? (
+          {loading?<p role="status">Loading catalogue…</p>:failure?.query===query?<div role="alert"><p>{failure.message}</p><Button onClick={()=>{setFailure(null);setRetry(n=>n+1);}}>Retry catalogue</Button></div>:results.length ? (
             <div className="boot-grid">
               {results.map((boot) => (
                 <BootCard
@@ -264,11 +251,12 @@ export function Catalogue({ boots }: { boots: CatalogueBoot[] }) {
               <h2>No boots found.</h2>
               <p>
                 Try a different search or clear your filters to explore the
-                sample collection.
+                collection.
               </p>
               <Button onClick={reset}>Clear filters</Button>
             </div>
           )}
+          {data&&data.pages>1&&<nav className="account-actions" aria-label="Catalogue pagination"><Button variant="outline" disabled={data.page<=1} onClick={()=>{const p=new URLSearchParams(query);p.set('page',String(data.page-1));window.history.pushState(null,'',`/boots?${p}`);}}>Previous</Button><span>Page {data.page} of {data.pages}</span><Button variant="outline" disabled={data.page>=data.pages} onClick={()=>{const p=new URLSearchParams(query);p.set('page',String(data.page+1));window.history.pushState(null,'',`/boots?${p}`);}}>Next</Button></nav>}
         </div>
       </div>
     </>

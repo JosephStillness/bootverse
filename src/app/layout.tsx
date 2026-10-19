@@ -5,6 +5,7 @@ import "@fontsource/geist/latin-600.css";
 import "@fontsource/geist/latin-700.css";
 import "./globals.css";
 import { Navbar } from "@/components/navbar";
+import { ComparisonProvider } from "@/components/comparison/selection";
 import { Footer } from "@/components/footer";
 export const metadata: Metadata = {
   title: {
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
     template: "%s | BootVerse",
   },
   description:
-    "Explore the BootVerse football boot sample catalogue by brand, silo, tier, and outsole surface. All configurations are illustrative and unverified.",
+    "Explore published football boot variants by brand, silo, tier and outsole. Compare sourced details and community experiences; sample configurations and unknowns are labeled.",
 };
 export default function RootLayout({
   children,
@@ -25,9 +26,9 @@ export default function RootLayout({
         <a className="skip-link" href="#main">
           Skip to content
         </a>
-        <Navbar />
+        <ComparisonProvider><Navbar />
         <main id="main">{children}</main>
-        <Footer />
+        <Footer /></ComparisonProvider>
       </body>
     </html>
   );

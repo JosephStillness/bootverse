@@ -1,7 +1,6 @@
 import {z} from 'zod';
 import {footProfileBaseSchema,footProfileSchema,measurementKeys} from '@/lib/foot-profile/validation';
 import type {PrivateFootProfile} from '@/lib/foot-profile/service';
-import {boots} from '@/lib/boots/data';
 import {normalizeProfile} from './normalize';
 import type {Result} from './types';
 
@@ -36,7 +35,8 @@ export function filterResults(results:Result[],filters:Refinements) {
   &&(filters.reviews==='all'||r.reviewAnalysis?.counts.eligible!==null&&r.reviewAnalysis?.counts.eligible!==undefined&&r.reviewAnalysis.counts.eligible>=5));
 }
 export function catalogueReference(result:Result) {
- return boots.find(boot=>boot.id===result.entry.id&&boot.slug===result.entry.slug&&boot.variant.id===result.variantId&&boot.generation.id===result.generationId&&boot.colorwayId===result.entry.colorwayId&&boot.brand.id===result.brandId&&boot.tier.name===result.tier&&boot.variant.surface===result.outsole)??null;
+ const c=result.catalogue;
+ return c&&c.entryId===result.entry.id&&c.slug===result.entry.slug&&c.variantId===result.variantId&&c.generationId===result.generationId&&c.colorwayId===result.entry.colorwayId&&c.brandId===result.brandId&&c.tier===result.tier&&c.outsole===result.outsole&&/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(c.slug)?{id:c.entryId,slug:c.slug}:null;
 }
 
 export const finderStepKeys:readonly (readonly string[])[]=[

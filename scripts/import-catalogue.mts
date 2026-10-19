@@ -3,6 +3,8 @@ import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { bootData } from "../src/lib/boots/data";
 if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required.");
+const target=new URL(process.env.DATABASE_URL);
+if(process.env.NODE_ENV==='production'||!['localhost','127.0.0.1','[::1]'].includes(target.hostname))throw Error('Sample imports are development-only and require a localhost database.');
 const db = new PrismaClient({
   adapter: new PrismaPg({
     connectionString: process.env.DATABASE_URL,
@@ -65,6 +67,7 @@ try {
         colorwayId,
         generationId,
         sample,
+        published:true,
       };
       await tx.catalogueEntry.upsert({
         where: { id },

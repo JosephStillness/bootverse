@@ -35,9 +35,9 @@ export async function recommendForUser(actor:Principal|null,input:unknown) {
    if(current.id!==profile.revision||current.version!==profile.version)throw new CommunityError(409,"Your foot profile changed. Please retry with its current settings.");
   }
   const asOf=new Date();
-  const rows=await tx.bootVariant.findMany({where:{entries:{some:{}}},orderBy:{id:"asc"},take:rules.maxCandidates+1,
+  const rows=await tx.bootVariant.findMany({where:{entries:{some:{published:true}}},orderBy:{id:"asc"},take:rules.maxCandidates+1,
    select:{id:true,generationId:true,surface:true,tier:{select:{id:true,name:true,generation:{select:{id:true,name:true,family:{select:{id:true,name:true,brand:{select:{id:true,name:true}}}}}}}},
-    entries:{orderBy:[{sample:"asc"},{id:"asc"}],take:1,select:{id:true,slug:true,sample:true,colorwayId:true,colorway:{select:{name:true}}}},
+    entries:{where:{published:true},orderBy:[{sample:"asc"},{id:"asc"}],take:1,select:{id:true,slug:true,sample:true,colorwayId:true,colorway:{select:{name:true}}}},
     recommendationEvidence:{where:{approved:true,observedAt:{lte:asOf},validUntil:{gt:asOf}},orderBy:[{observedAt:"desc"},{id:"asc"}],take:rules.maxEvidencePerVariant+1,select:{id:true,kind:true,sourceKind:true,sourceUrl:true,observedAt:true,validUntil:true,payload:true}}}});
   let clippedEvidence=false,invalidEvidence=0;
   const candidates:Candidate[]=rows.slice(0,rules.maxCandidates).map(row=>{
@@ -52,7 +52,8 @@ export async function recommendForUser(actor:Principal|null,input:unknown) {
     entry:{id:entry.id,slug:entry.slug,colorwayId:entry.colorwayId,colorway:entry.colorway.name},sample:entry.sample,evidence};
   });
   const result=recommend(preferences,candidates,asOf.toISOString(),limit);
-  const enriched=await attachReviewAnalysis(tx,[...result.eligible,...result.unverified],preferences,user.id);
+  const analysis=await attachReviewAnalysis(tx,[...result.eligible,...result.unverified],preferences,user.id);
+  const enriched=analysis.map(r=>({...r,catalogue:{entryId:r.entry.id,slug:r.entry.slug,variantId:r.variantId,generationId:r.generationId,colorwayId:r.entry.colorwayId,brandId:r.brandId,tier:r.tier,outsole:r.outsole}}));
   return {...result,eligible:enriched.slice(0,result.eligible.length),unverified:enriched.slice(result.eligible.length),truncated:result.truncated||rows.length>rules.maxCandidates||clippedEvidence,
    notices:[...result.notices,...(rows.length>rules.maxCandidates?[`Candidate scan limited to ${rules.maxCandidates} variants in stable ID order; results are not exhaustive.`]:[]),...(clippedEvidence?["Evidence limit reached for at least one variant; it was left unverified rather than partially assessing potentially conflicting sources."]:[]),...(invalidEvidence?["Malformed product evidence left its variant unverified. Product data needs operator review."]:[])]};
  },{isolationLevel:"RepeatableRead"});

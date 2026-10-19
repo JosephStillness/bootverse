@@ -1,4 +1,5 @@
 "use client";
+import {CompareButton} from "@/components/comparison/selection";
 import {useState} from 'react';
 import Link from 'next/link';
 import {Button} from '@/components/ui/button';
@@ -45,7 +46,7 @@ export function FinderResultCard({result:r,rank}:{result:Result;rank?:number}) {
     <div className="finder-status-list"><span>Surface: {r.surfaceStatus==='compatible'?'Evidence supported':'Unverified'}</span><span>Budget: {r.budgetStatus==='not-requested'?'Not supplied':r.budgetStatus}</span><span>Availability: {r.availability}</span></div>
     <p className="finder-price">{r.price?`${r.price.amount} ${r.price.currency}`:'Verified price unavailable'}{r.price&&<small>Source observed {r.price.observedAt.slice(0,10)} · exact listed colorway/size scope</small>}</p>
     <p>{showScore?`Preference-ranking score: ${r.preferenceScore}/100`:'Preference evidence is incomplete; no numerical ranking score shown.'}</p><p className="field-help">Requested-factor evidence coverage: {r.evidenceCoverage}%. This is not a fit probability. Physical fit remains unverified.</p>
-    {boot?<div className="finder-card-actions"><Link href={`/boots/${boot.slug}`} className="text-link">View Boot Details</Link><Link href={`/boots/${boot.slug}#reviews`} className="text-link">Read Community Reviews</Link></div>:<p className="field-help">A public detail page is not available for this exact database entry.</p>}
+    {boot?<div className="finder-card-actions"><Link href={`/boots/${boot.slug}`} className="text-link">View Boot Details</Link><Link href={`/boots/${boot.slug}#reviews`} className="text-link">Read Community Reviews</Link><CompareButton entry={{entryId:r.entry.id,variantId:r.variantId,label:`${r.productName} ${r.tier} ${r.outsole??"Unknown"}`}}/></div>:<p className="field-help">A public detail page is not available for this exact database entry.</p>}
    </div>
   </div>
   <details className="finder-explanation"><summary>View Supporting Evidence<span aria-hidden="true"> +</span></summary>
@@ -81,6 +82,6 @@ export function FinderResults({output,submitted,onEdit,onRetry,busy}:{output:Eng
   <p role="status">Showing {eligible.length} {eligible.length===1?'recommendation':'recommendations'} and {unverified.length} unverified catalogue {unverified.length===1?'entry':'entries'} from the returned set.</p>
   {output.counts.eligible===0?<div className="finder-empty"><h3>No boots currently meet the verified criteria.</h3><p>Product-specific surface evidence is missing or the safety rules excluded the available variants. Changing budget cannot establish missing manufacturer evidence. You can adjust your preferences or explore the catalogue while fit remains unverified.</p><Link className="text-link" href="/boots">Explore the catalogue</Link></div>:eligible.length===0?<div className="finder-empty"><h3>No recommendations match these refinements.</h3><p>Reset the filters to see the engine’s returned eligible candidates. Safety exclusions remain in force.</p><Button variant="outline" onClick={()=>setFilters({...defaultRefinements})}>Show all returned recommendations</Button></div>:eligible.map(r=><FinderResultCard key={r.variantId} result={r} rank={output.eligible.findIndex(x=>x.variantId===r.variantId)+1}/>)}
   {unverified.length>0&&<section className="finder-unverified"><h2>Explore with caution.</h2><p>These are unverified catalogue entries, not fit recommendations. Sample configurations do not establish real manufacturer specifications or community fit evidence.</p>{unverified.map(r=><FinderResultCard key={r.variantId} result={r}/>)}</section>}
-  <p className="field-help">Comparison is not implemented in the current catalogue. Boot Details and Community Reviews open the exact linked entry; no variants are silently combined.</p>
+  <p className="field-help">Compare up to four exact variants. Boot Details and Community Reviews open the published linked entry; tiers and outsoles stay separate.</p>
  </section>;
 }

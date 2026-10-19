@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { boots } from "@/lib/boots/data";
+import {getProduct} from "@/lib/boots/service";
+import {connection} from "next/server";
 import { currentUser } from "@/lib/accounts/service";
 import { ReviewForm } from "@/components/reviews/review-form";
 export const metadata = {
@@ -12,8 +13,8 @@ export default async function NewReview({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await params,
-    boot = boots.find((b) => b.slug === slug);
+  await connection();
+  const {slug}=await params,boot=await getProduct(slug);
   if (!boot) notFound();
   const actor = await currentUser();
   if (!actor)
@@ -37,7 +38,7 @@ export default async function NewReview({
         {boot.tier.name} · {boot.variant.surface ?? "Unknown surface"}
       </p>
       <p className="field-help">
-        Unverified sample variant. Colorways share reviews; generations, tiers
+        {boot.sample?"Unverified sample variant. ":""}Colorways share reviews; generations, tiers
         and outsoles remain separate.
       </p>
       <div className="post-compose-panel">

@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  output: process.env.BOOTVERSE_STANDALONE === "1" ? "standalone" : undefined,
+  // Release builds do not restore caches; persisted cache filenames were corrupted in this workspace.
+  experimental: {turbopackFileSystemCacheForBuild:false,turbopackFileSystemCacheForDev:false},
   async headers() {
     return [
       {

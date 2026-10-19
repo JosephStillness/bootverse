@@ -7,12 +7,12 @@ export function uploadLimits() {
 }
 export function storage() {
     const { S3_ENDPOINT: endpoint, S3_BUCKET: bucket, S3_ACCESS_KEY_ID: accessKeyId, S3_SECRET_ACCESS_KEY: secretAccessKey } = process.env;
-    if (!endpoint || !bucket || !accessKeyId || !secretAccessKey)
+    if (!bucket || !!accessKeyId !== !!secretAccessKey || (process.env.S3_SESSION_TOKEN && !accessKeyId))
         throw Error("Image storage is not configured.");
-    const u = new URL(endpoint);
-    if (u.username || u.password || u.search || u.hash || (u.protocol !== "https:" && !(u.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(u.hostname))))
+    const u = endpoint?new URL(endpoint):null;
+    if (u&&(u.username || u.password || u.search || u.hash || (u.protocol !== "https:" && !(u.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(u.hostname)))))
         throw Error("Unsafe storage endpoint configuration.");
-    const client = new S3Client({ endpoint, region: process.env.S3_REGION ?? "us-east-1", forcePathStyle: true, credentials: { accessKeyId, secretAccessKey }, maxAttempts: 2 });
+    const client = new S3Client({ endpoint, region: process.env.S3_REGION ?? "us-east-1", forcePathStyle: true, ...(accessKeyId&&secretAccessKey?{credentials:{accessKeyId,secretAccessKey,...(process.env.S3_SESSION_TOKEN?{sessionToken:process.env.S3_SESSION_TOKEN}:{})}}:{}), maxAttempts: 2 });
     return {
         async put(key: string, body: Buffer) { await client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: "image/webp", CacheControl: "private, no-store" }), { abortSignal: AbortSignal.timeout(20000) }); },
         async get(key: string) { const r = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }), { abortSignal: AbortSignal.timeout(20000) }); return r.Body?.transformToByteArray(); },
