@@ -1,0 +1,86 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: BootVerse staging-only private image storage. Requires separate owner approval before deployment.
+Parameters:
+  StagingBucketName:
+    Type: String
+    Description: Approved globally unique staging bucket; never a production bucket.
+    AllowedPattern: '^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$'
+Resources:
+  StagingImages:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Ref StagingBucketName
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: IncompleteUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+          # Proposal: owner must approve retention and erasure policy before applying.
+          - Id: NoncurrentImageVersions
+            Status: Enabled
+            Prefix: images/
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 14
+          - Id: ExpiredImageDeleteMarkers
+            Status: Enabled
+            Prefix: images/
+            Expiration:
+              ExpiredObjectDeleteMarker: true
+      Tags:
+        - Key: Application
+          Value: BootVerse
+        - Key: Environment
+          Value: staging
+  TransportPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref StagingImages
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: s3:*
+            Resource:
+              - !GetAtt StagingImages.Arn
+              - !Sub '${StagingImages.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+  AppObjectPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Attach only to an approved BootVerse staging app or cleanup identity; no credentials or role are created here.
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: StagingImagesOnly
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:DeleteObject
+            Resource: !Sub '${StagingImages.Arn}/images/*'
+Outputs:
+  BucketName:
+    Value: !Ref StagingImages
+  AppPolicyArn:
+    Value: !Ref AppObjectPolicy

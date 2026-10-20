@@ -10,3 +10,6 @@ output
 coverage
 *.log
 *.tsbuildinfo
+
+# Exclude accidental deployment env copies from every build stage.
+deploy/*.env

@@ -47,3 +47,6 @@ next-env.d.ts
 /.playwright-cli/
 
 /output/playwright/
+
+# Real staging secrets live outside the checkout; exclude accidental local copies.
+/deploy/*.env

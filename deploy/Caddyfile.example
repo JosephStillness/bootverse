@@ -1,0 +1,19 @@
+# Host-installed Caddy; replace domain AND the documentation-only operator CIDR.
+# Do not enable CDN/proxying in front without revisiting client-IP trust.
+staging.bootverse.example.com {
+	@outside not remote_ip 127.0.0.1 ::1 192.0.2.0/24
+	respond @outside "Staging access restricted" 403
+	header Strict-Transport-Security "max-age=86400"
+	request_body {
+		max_size 12MB
+	}
+	reverse_proxy 127.0.0.1:3000 {
+		header_up Host staging.bootverse.example.com
+		header_up X-Forwarded-Host staging.bootverse.example.com
+		header_up X-Forwarded-Proto https
+		header_up X-Real-IP {remote_host}
+		header_up -CF-Connecting-IP
+		header_up -Forwarded
+	}
+	# No access log: callback query strings contain one-time sign-in tokens.
+}

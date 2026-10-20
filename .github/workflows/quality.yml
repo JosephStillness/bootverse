@@ -1,5 +1,5 @@
 name: Quality gates
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: read
 concurrency:
@@ -54,3 +54,20 @@ jobs:
           cache: npm
       # Deliberately remains failing while the known upstream lint advisory is unresolved.
       - run: npm audit --audit-level=high
+
+  staging-image-check:
+    # Build-only: no registry login/push, AWS credentials, migration or deploy step.
+    # The full audit remains a hard gate; known advisories are not suppressed.
+    if: github.event_name == 'workflow_dispatch'
+    needs: [application, full-dependency-audit]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Validate staging Compose with placeholders
+        run: >-
+          STAGING_ENV_FILE=./staging.env.example
+          BOOTVERSE_IMAGE=bootverse:ci-check
+          docker compose -f deploy/compose.staging.yaml config --quiet
+      - name: Build candidate image without secrets
+        run: docker build --tag bootverse:ci-check .

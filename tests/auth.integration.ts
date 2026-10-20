@@ -15,6 +15,7 @@ import { footProfileTests } from "./foot-profile.integration";
 import { reviewsTests } from "./reviews.integration";
 import { interactionsTests } from "./interactions.integration";
 import {catalogueTests} from "./catalogue.integration";
+import {databaseVerificationTests} from "./database-verification.integration";
 import { communityTests } from "./community.integration";
 import { platformTests } from "./platform.integration";
 import { S3Client, CreateBucketCommand, ListObjectsV2Command, DeleteObjectsCommand, DeleteBucketCommand } from "@aws-sdk/client-s3";
@@ -143,6 +144,7 @@ test(
         0,
         "Migration must apply cleanly to an empty database.",
       );
+      await databaseVerificationTests(t,db,env);
       const catalogue = spawn(
         process.execPath,
         ["--import", "tsx", "scripts/import-catalogue.mts"],

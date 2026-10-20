@@ -1,0 +1,28 @@
+# Preparation only. No build, migration or cloud provisioning is performed here.
+services:
+  app:
+    image: ${BOOTVERSE_IMAGE:?Set an approved immutable image digest}
+    init: true
+    restart: unless-stopped
+    env_file:
+      - ${STAGING_ENV_FILE:-/etc/bootverse/staging.env}
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      HOSTNAME: 0.0.0.0
+    ports:
+      - '127.0.0.1:3000:3000'
+    stop_grace_period: 60s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    pids_limit: 256
+    mem_limit: 1g
+    cpus: 1.0
+    logging:
+      driver: local
+      options:
+        max-size: '10m'
+        max-file: '3'
+    # Only disposable Next/image caches use the container filesystem.
+    # User uploads must use the private staging bucket, not a mounted local directory.

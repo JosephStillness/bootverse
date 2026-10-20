@@ -26,7 +26,8 @@
     "db:local": "tsx scripts/local.mts migrate",
     "test:platform:local": "tsx scripts/local.mts test",
     "test:browser": "tsx scripts/browser-regressions.mts",
-    "test:browser:serve": "node scripts/browser-qa.mjs"
+    "test:browser:serve": "node scripts/browser-qa.mjs",
+    "db:verify": "tsx scripts/verify-database.mts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
