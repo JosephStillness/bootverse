@@ -1,5 +1,6 @@
 .git
 .next
+.next.nosync
 node_modules
 .env
 .env.*

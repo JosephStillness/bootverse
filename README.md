@@ -55,7 +55,9 @@ npm audit
 
 Run integration tests after a successful build. Never substitute a production DB for the guarded local URL. Browser acceptance procedures and the full executed test ledger are in [the remediation report](docs/BOOTVERSE_REMEDIATION_REPORT.md).
 
-Turbopack filesystem persistence is disabled: this workspace reproduced duplicate numeric cache filenames and invalid persisted-cache parsing. Next already separates dev/release artifacts; do not run a release build concurrently with a dev process sharing `.next`. Use a fresh CI checkout. Do not weaken TypeScript includes or delete source files to repair caches.
+Next builds, generated route types and TypeScript's incremental cache use `.next.nosync`, excluded from iCloud sync in this Documents workspace. The obsolete `.next` is ignored; current generated types remain checked. Turbopack filesystem persistence remains disabled after earlier cache corruption. Do not build concurrently with a dev process sharing the same output directory. Use a fresh CI checkout.
+
+The pinned Next ESLint plugin's directory-glob dependency is replaced by a small Node 24 built-in adapter under `tooling/next-lint-glob`. All Next/React/TypeScript lint rules remain enabled. Run its compatibility tests when updating Next. Prisma's pg connections enable supported query pipelining for concurrent transaction queries; dependent operations still use sequential awaits. See [tooling and driver fixes](docs/tooling-and-driver-fixes.md).
 
 ## Deployment preparation
 
@@ -63,7 +65,7 @@ No AWS resources or production deployment are included. Docker builds enable `BO
 
 Readiness checks database migration metadata only; it does **not** certify SMTP, object storage, IAM, backups or full schema drift. The runtime image does not apply migrations or run cleanup jobs; use separate reviewed release/maintenance jobs. The Node base image is pinned to the digest tested locally; release engineering must review updates and scan the complete image.
 
-The configured non-local database still requires explicit schema/history reconciliation and migration approval. Full dependency audit remains non-green while the upstream development-only `braces` advisory has no safe compatible fix; runtime audit is separate. Production email delivery, TLS/proxy trust, IAM, restore exercises and monitoring require external verification.
+The configured non-local database still requires explicit schema/history reconciliation and migration approval. Full and runtime dependency audits pass at the latest local verification; keep running both against the lockfile. Production email delivery, TLS/proxy trust, IAM, restore exercises and monitoring require external verification.
 
 See [Phase 4.1 staging architecture and approval gates](docs/PHASE4_1_STAGING_PLAN.md), [deployment/migration/backup runbook](docs/deployment-runbook.md), [original audit](docs/BOOTVERSE_FULL_AUDIT.md), and [remediation status](docs/BOOTVERSE_REMEDIATION_REPORT.md). Historical sprint reports under `docs/` describe their dated snapshots; this README describes current behavior.
 

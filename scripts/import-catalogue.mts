@@ -8,6 +8,7 @@ if(process.env.NODE_ENV==='production'||!['localhost','127.0.0.1','[::1]'].inclu
 const db = new PrismaClient({
   adapter: new PrismaPg({
     connectionString: process.env.DATABASE_URL,
+    pipeline: true,
     options: "-c timezone=UTC",
   }),
 });

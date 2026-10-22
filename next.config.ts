@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // iCloud must not sync regenerable build artifacts or replay conflicting type files.
+  distDir: ".next.nosync",
   poweredByHeader: false,
   output: process.env.BOOTVERSE_STANDALONE === "1" ? "standalone" : undefined,
   // Release builds do not restore caches; persisted cache filenames were corrupted in this workspace.

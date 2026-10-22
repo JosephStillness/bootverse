@@ -52,7 +52,7 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-      # Deliberately remains failing while the known upstream lint advisory is unresolved.
+      # Audit all tooling too; the scoped lint adapter must not hide advisories.
       - run: npm audit --audit-level=high
 
   staging-image-check:

@@ -791,11 +791,6 @@ test(
           assert.match(event.requestId,/^[\da-f-]{36}$/);
         }
       }
-      const warnings = appOutput
-        .split("\n")
-        .filter((line) => line.includes("DeprecationWarning:"));
-      for (const warning of warnings)
-        console.warn("Observed runtime warning:", warning);
       assert.ok(
         !appOutput.includes("AdapterError"),
         "Revoked sessions should not raise adapter errors on logout.",
@@ -848,6 +843,10 @@ test(
           (await fetch(`${base}/boots/sample-future-peach-ag`)).status,
           200,
         );
+      });
+      await t.test("runtime does not rely on deprecated pg query queuing", () => {
+        const warnings = appOutput.match(/.*DeprecationWarning: Calling client\.query\(\)[^\n]*(?:\n\s+at[^\n]*)*/g) ?? [];
+        assert.deepEqual(warnings, [], "Concurrent database operations must use a supported pg execution mode.");
       });
     } catch (error) {
       // Logs are sanitized by the app; never print SMTP messages, cookies or environment.

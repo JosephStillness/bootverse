@@ -6,6 +6,7 @@ if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required.");
 const db = new PrismaClient({
   adapter: new PrismaPg({
     connectionString: process.env.DATABASE_URL,
+    pipeline: true,
     options: "-c timezone=UTC",
   }),
 });
