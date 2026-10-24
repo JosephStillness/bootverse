@@ -892,6 +892,8 @@
     color: var(--muted-foreground);
   }
   .specification-list dd {
+    min-width: 0;
+    overflow-wrap: anywhere;
     text-align: right;
   }
   .specification-list dd span {

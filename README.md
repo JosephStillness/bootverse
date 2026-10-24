@@ -36,6 +36,8 @@ Eight fictional sample entries remain available through the **explicit local see
 
 Identity: `Brand → Family → Generation → Tier → Outsole variant → Catalogue entry/colorway`. Reviews aggregate only an exact variant, not across tiers/outsoles/generations. See [catalogue architecture](docs/catalogue-and-comparison.md).
 
+Data D1 adds a source registry, manufacturer/region-scoped SKUs, validated source-backed claims, licensed image metadata and an audited draft/review/publication lifecycle. ADMIN-only APIs support manual curation; a full product editor and import pipeline are deferred. Legacy source/specification gaps stay explicit, and broader catalogue outsole labels do not relax Finder safety. See the [D1 schema, API and migration report](docs/DATA_D1_SCHEMA_SOURCE_REGISTRY_REPORT.md) before applying the two additive migrations. Never apply them to Neon automatically.
+
 ## Checks
 
 ```sh
@@ -70,5 +72,7 @@ The configured non-local database still requires explicit schema/history reconci
 See [Phase 4.1 staging architecture and approval gates](docs/PHASE4_1_STAGING_PLAN.md), [deployment/migration/backup runbook](docs/deployment-runbook.md), [original audit](docs/BOOTVERSE_FULL_AUDIT.md), and [remediation status](docs/BOOTVERSE_REMEDIATION_REPORT.md). Historical sprint reports under `docs/` describe their dated snapshots; this README describes current behavior.
 
 Repeatable browser regression setup and CLI requirements: [browser QA environment](docs/catalogue-and-comparison.md#reusable-browser-regression-environment). `npm run test:browser:serve` creates disposable local fixtures; it is never a production server or sample seed command for a real database.
+
+With an authenticated disposable QA ADMIN session, `BOOTVERSE_BROWSER_SESSION=your-session npm run test:browser -- data` checks D1 source/claim verification, public provenance, mobile/desktop wrapping and source revocation. It mutates only the `qa-product-0` fixture in that disposable environment; never run it against a real app database.
 
 Phase 4.2 database/storage verification: [report and approval requirements](docs/PHASE4_2_DATABASE_STORAGE_REPORT.md). After Prisma client generation, run `npm run db:verify -- --env-file /PRIVATE/PATH/database.env` from the project root. This command is read-only, requires explicit env selection, checks migration checksums/model tables/critical constraints/triggers and Prisma schema drift, and refuses mixed pooled/direct targets or unverified remote TLS. It never migrates, seeds or provisions. Use independent app/migrator credentials for an approved staging target; no remote initialization is authorized by the command.

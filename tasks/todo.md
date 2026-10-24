@@ -36,3 +36,15 @@ Sprint 3.4:187 unit tests and68 isolated integration tests passed. Lint/typechec
 - [x] Reproducible bounded pure and isolated HTTP benchmarks; no speculative optimization or private caching.
 - [x] Unit/integration regressions, production build, typecheck/lint, Prisma validation/status/drift and dependency audits.
 - [x] Complete browser QA cleanup and publish the documented readiness assessment.
+
+# Data D1 checkpoints
+
+- [x] Audit identity, provenance, publication, offers and storage; record mappings and scope.
+- [x] Add tested validation/quality/transition contracts.
+- [x] Add Prisma schema and transactional additive migrations; test legacy preservation and conflict preflight on disposable DBs.
+- [x] Implement authenticated source/product/claim/image/offer services and bounded admin APIs.
+- [x] Integrate sourced specifications and expanded catalogue outsole categories without relaxing Finder surface rules.
+- [x] Run unit/integration/schema/migration/type/lint/build and query-plan checks; review security and compatibility.
+- [x] Complete docs/DATA_D1_SCHEMA_SOURCE_REGISTRY_REPORT.md with actual outcomes and D2 readiness.
+
+D1: 247 unit tests and91 isolated integration/performance tests pass; lint/typecheck/Prisma/build, four browser regressions and local Docker smoke pass. Both additive migrations applied only to guarded localhost after private backup and isolated restoration. Fourteen migrations/checksums/constraints/triggers/drift pass; 8 entries/1 user/0 reviews and existing identities/URLs/specifications preserved. Full/runtime dependency audits0. No Neon migration, deployment, push or D2 work. See the D1 report for earlier failed attempts and remaining limits.

@@ -42,6 +42,8 @@ model User {
   moderationActions     ModerationAction[]
   verificationDecisions CreatorVerificationDecision[]
   videos                CreatorVideo[]
+  checkedProductSources ProductSource[] @relation("SourceChecker")
+  checkedProductClaims  ProductClaim[] @relation("ClaimReviewer")
 }
 
 model UserProfile {
@@ -90,6 +92,13 @@ model BootBrand {
   id       String       @id
   name     String
   families BootFamily[]
+  slug String? @unique @db.VarChar(100)
+  officialWebsite String? @db.VarChar(2000)
+  status String @default("ACTIVE") @db.VarChar(10)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+  sources ProductSource[]
+  identifiers ProductIdentifier[]
 }
 
 model BootFamily {
@@ -128,11 +137,14 @@ model BootVariant {
   id           String           @id
   tierModelId  String
   generationId String
-  surface      String?          @db.VarChar(2)
+  surface      String?          @db.VarChar(10)
+  manufacturerOutsole String? @db.VarChar(120)
+  constructionNote String? @db.VarChar(1000)
   tier         BootTier         @relation(fields: [tierModelId, generationId], references: [id, generationId], onDelete: Restrict, onUpdate: Restrict)
   entries      CatalogueEntry[]
   reviews      BootReview[]
   recommendationEvidence RecommendationEvidence[]
+  claims ProductClaim[]
 
   @@unique([id, generationId])
   @@index([tierModelId])
@@ -143,6 +155,7 @@ model BootColorway {
   generationId String
   name         String
   swatch       String           @db.VarChar(7)
+  colorNames   String[]         @default([])
   generation   BootGeneration   @relation(fields: [generationId], references: [id], onDelete: Restrict)
   entries      CatalogueEntry[]
 
@@ -162,10 +175,24 @@ model CatalogueEntry {
   variant          BootVariant  @relation(fields: [outsoleVariantId, generationId], references: [id, generationId], onDelete: Restrict, onUpdate: Restrict)
   colorway         BootColorway @relation(fields: [colorwayId, generationId], references: [id, generationId], onDelete: Restrict, onUpdate: Restrict)
   posts            Post[]
+  status ProductPublicationStatus @default(DRAFT)
+  sourceId String?
+  source ProductSource? @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  slugLocked Boolean @default(false)
+  version Int @default(1)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+  identifiers ProductIdentifier[]
+  claims ProductClaim[]
+  productImages ProductImage[]
+  offers RecommendationEvidence[]
 
   @@unique([outsoleVariantId, colorwayId])
+  @@unique([id, outsoleVariantId])
   @@index([colorwayId])
   @@index([published, id])
+  @@index([status, createdAt, id])
+  @@index([sourceId])
 }
 
 model PostCategory {
@@ -264,7 +291,7 @@ model PostVote {
   @@index([userId])
 }
 
-// One review per exact generation/tier/outsole variant; colorways share reviews.
+// Colorways share reviews only when explicitly curated to the same construction variant.
 model BootReview {
   id               String              @id @default(cuid())
   variantId        String
@@ -396,6 +423,7 @@ model UploadedImage {
   createdAt DateTime        @default(now()) @db.Timestamptz(3)
   updatedAt DateTime        @updatedAt @db.Timestamptz(3)
   reports   ContentReport[]
+  productImages ProductImage[]
 
   @@index([state, createdAt])
   @@index([ownerId, createdAt])
@@ -559,6 +587,148 @@ model RecommendationEvidence {
   approved      Boolean @default(false)
   createdAt     DateTime @default(now()) @db.Timestamptz(3)
   updatedAt     DateTime @updatedAt @db.Timestamptz(3)
+  sourceId String?
+  source ProductSource? @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  entryId String?
+  entry CatalogueEntry? @relation(fields: [entryId, variantId], references: [id, outsoleVariantId], onDelete: Restrict, onUpdate: Restrict)
+  countryCode String? @db.VarChar(2)
 
   @@index([variantId, approved, observedAt])
+  @@index([sourceId])
+  @@index([entryId, countryCode, observedAt])
+}
+
+enum ProductPublicationStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  ARCHIVED
+  REJECTED
+}
+
+enum ProductVerificationState {
+  UNVERIFIED
+  PENDING_REVIEW
+  VERIFIED
+  CONFLICTED
+  REJECTED
+}
+
+enum ProductSourceType {
+  MANUFACTURER
+  RETAILER
+  PRODUCT_FEED
+  AFFILIATE_FEED
+  MANUAL_RESEARCH
+  COMMUNITY
+  OTHER
+}
+
+model ProductSource {
+  id String @id @default(cuid())
+  name String @db.VarChar(120)
+  type ProductSourceType
+  baseUrl String @db.VarChar(2000)
+  brandId String?
+  brand BootBrand? @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  accessMethod String @db.VarChar(120)
+  authorizationStatus String @default("UNKNOWN") @db.VarChar(20)
+  permissionNotes String? @db.VarChar(1000)
+  permissionUrl String? @db.VarChar(2000)
+  usageRestrictions String? @db.VarChar(1000)
+  status String @default("ACTIVE") @db.VarChar(10)
+  checkedById String?
+  checkedBy User? @relation("SourceChecker", fields: [checkedById], references: [id], onDelete: SetNull)
+  authorizationCheckedAt DateTime? @db.Timestamptz(3)
+  lastCheckedAt DateTime? @db.Timestamptz(3)
+  version Int @default(1)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  entries CatalogueEntry[]
+  claims ProductClaim[]
+  identifiers ProductIdentifier[]
+  images ProductImage[]
+  offers RecommendationEvidence[]
+
+  @@index([status, type, id])
+  @@index([brandId])
+  @@index([checkedById])
+}
+
+// Case-preserving manufacturer identifier; UNSPECIFIED is distinct from GLOBAL.
+model ProductIdentifier {
+  id String @id @default(cuid())
+  entryId String
+  entry CatalogueEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  brandId String
+  brand BootBrand @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  value String @db.VarChar(120)
+  region String @default("UNSPECIFIED") @db.VarChar(11)
+  sourceId String
+  source ProductSource @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  sourceUrl String @db.VarChar(2000)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([brandId, region, value])
+  @@index([entryId])
+  @@index([sourceId])
+}
+
+model ProductClaim {
+  id String @id @default(cuid())
+  entryId String?
+  entry CatalogueEntry? @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  variantId String?
+  variant BootVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  attribute String @db.VarChar(40)
+  value Json
+  basis String @db.VarChar(20)
+  sourceId String
+  source ProductSource @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  sourceUrl String @db.VarChar(2000)
+  observedAt DateTime @db.Timestamptz(3)
+  status ProductVerificationState @default(UNVERIFIED)
+  reviewerId String?
+  reviewer User? @relation("ClaimReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  reviewedAt DateTime? @db.Timestamptz(3)
+  reviewNote String? @db.VarChar(1000)
+  notes String? @db.VarChar(1000)
+  version Int @default(1)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([entryId, status, attribute])
+  @@index([variantId, status, attribute])
+  @@index([sourceId])
+  @@index([reviewerId])
+}
+
+// Reuse upload storage/deletion; external images are references, never fetched here.
+model ProductImage {
+  id String @id @default(cuid())
+  entryId String
+  entry CatalogueEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  uploadedImageId String?
+  uploadedImage UploadedImage? @relation(fields: [uploadedImageId], references: [id], onDelete: Cascade)
+  externalUrl String? @db.VarChar(2000)
+  sourceId String
+  source ProductSource @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  sourceUrl String @db.VarChar(2000)
+  attribution String @db.VarChar(300)
+  altText String @db.VarChar(300)
+  licenseStatus String @default("UNKNOWN") @db.VarChar(10)
+  permissionNotes String? @db.VarChar(1000)
+  permissionUrl String? @db.VarChar(2000)
+  sortOrder Int @default(0)
+  isPrimary Boolean @default(false)
+  status ProductVerificationState @default(UNVERIFIED)
+  reviewedAt DateTime? @db.Timestamptz(3)
+  version Int @default(1)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([entryId, status, sortOrder])
+  @@index([uploadedImageId])
+  @@index([sourceId])
 }

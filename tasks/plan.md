@@ -42,3 +42,16 @@ Design contract: preserve Geist and existing monochrome tokens. A concise left-a
 4. Run isolated PostgreSQL/S3/SMTP regressions, Prisma checks, production build and responsive browser journeys. Record exact results and unresolved blockers in docs/phase-3-validation.md.
 
 Operational questions: which request failed, was it auth/validation/rate-limit/database/service, and was time spent before or inside recommendation generation? No external monitoring or private shared cache.
+
+# Data D1 — Product schema and source registry
+
+Approved scope: the supplied D1 specification. No crawling/import pipeline, cloud writes, deployment or push. Existing checkpoints above are complete.
+
+1. Preserve the six existing product identity tables and stable public slugs. Add optional brand metadata, variant construction/designation, scoped SKU records, structured source-backed claims and image metadata referencing existing uploads.
+2. Add a source registry with documented access permission separate from source classification. New claims start unverified; administrative verification is source checking, not scientific certification. Keep recommendation safety evidence separate.
+3. Add a lifecycle beside the legacy publication boolean. A compatibility trigger keeps them consistent for existing trusted import/SQL callers; the admin service validates readiness and locks public slugs. No automatic draft publication.
+4. Add reusable strict Zod contracts, quality reports, source CRUD and bounded admin product inspection/mutations. Use existing auth, origin/body/rate guards, recheck admin role inside transactions and record decisions in the existing audit trail. D4 bulk approval UI is deferred.
+5. Test one additive migration on empty and pre-D1 disposable localhost databases. Preserve old JSON specifications as documented legacy data; never relabel them as new verified provenance. Offers reuse RecommendationEvidence with optional relational source/entry/region links; regional offers do not silently enter regionless Finder decisions.
+6. Execute regressions, database/index checks, build and D1 report with mappings, Mermaid, transition rules, migration rollout and honest limitations. After disposable rehearsals, back up and preflight the explicitly guarded localhost development DB before applying this additive local change. Never migrate the configured Neon or other remote target automatically.
+
+Risks: existing duplicate brand names must stop the migration, not be merged/deleted. A source's permission is not product authenticity. Colorways share a variant only by explicit curation; different constructions can use different variant IDs even with identical tier/outsole labels. Product images are metadata associations, not a new upload/storage implementation. Legacy publication/specification write compatibility remains until a later audited migration.

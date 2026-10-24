@@ -15,6 +15,8 @@ import { footProfileTests } from "./foot-profile.integration";
 import { reviewsTests } from "./reviews.integration";
 import { interactionsTests } from "./interactions.integration";
 import {catalogueTests} from "./catalogue.integration";
+import {productMigrationTests} from "./product-migration.integration";
+import {productDataTests} from "./product-data.integration";
 import {databaseVerificationTests} from "./database-verification.integration";
 import { communityTests } from "./community.integration";
 import { platformTests } from "./platform.integration";
@@ -107,6 +109,7 @@ test(
     created = true;
     await db.connect();
     databaseConnected = true;
+    await productMigrationTests(t, source.href);
     const port = await unusedPort(),
       smtpPort = await unusedPort(),
       base = `http://localhost:${port}`;
@@ -196,7 +199,7 @@ test(
               .map(([key, value]) => `${key}=${value}`)
               .join("; "),
           );
-          if (init.method && init.method !== "GET") headers.set("origin", base);
+          if (init.method && init.method !== "GET" && !headers.has("origin")) headers.set("origin", base);
           const response = await fetch(new URL(path, base), {
             ...init,
             headers,
@@ -543,6 +546,7 @@ test(
       await finderTests(t, { db, base, alice, bob, aliceId, bobId, secret: env.AUTH_SECRET! });
       if(process.env.BOOTVERSE_BENCHMARK === "1") await recommendationPerformanceTests(t,{db,alice,aliceId,secret:env.AUTH_SECRET!});
       if (testStorage) await platformTests(t, { db, base, alice, bob, aliceId, bobId, env });
+      await productDataTests(t, { db, base, alice, bob, aliceId });
       await t.test(
         "expired sessions and concurrent unique-username updates",
         async () => {

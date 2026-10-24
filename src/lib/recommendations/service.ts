@@ -38,7 +38,7 @@ export async function recommendForUser(actor:Principal|null,input:unknown) {
   const rows=await tx.bootVariant.findMany({where:{entries:{some:{published:true}}},orderBy:{id:"asc"},take:rules.maxCandidates+1,
    select:{id:true,generationId:true,surface:true,tier:{select:{id:true,name:true,generation:{select:{id:true,name:true,family:{select:{id:true,name:true,brand:{select:{id:true,name:true}}}}}}}},
     entries:{where:{published:true},orderBy:[{sample:"asc"},{id:"asc"}],take:1,select:{id:true,slug:true,sample:true,colorwayId:true,colorway:{select:{name:true}}}},
-    recommendationEvidence:{where:{approved:true,observedAt:{lte:asOf},validUntil:{gt:asOf}},orderBy:[{observedAt:"desc"},{id:"asc"}],take:rules.maxEvidencePerVariant+1,select:{id:true,kind:true,sourceKind:true,sourceUrl:true,observedAt:true,validUntil:true,payload:true}}}});
+    recommendationEvidence:{where:{approved:true,observedAt:{lte:asOf},validUntil:{gt:asOf},OR:[{sourceId:null},{source:{status:'ACTIVE',authorizationStatus:{not:'DENIED'}}}]},orderBy:[{observedAt:"desc"},{id:"asc"}],take:rules.maxEvidencePerVariant+1,select:{id:true,kind:true,sourceKind:true,sourceUrl:true,observedAt:true,validUntil:true,payload:true,countryCode:true}}}});
   let clippedEvidence=false,invalidEvidence=0;
   const candidates:Candidate[]=rows.slice(0,rules.maxCandidates).map(row=>{
    const entry=row.entries[0],family=row.tier.generation.family;

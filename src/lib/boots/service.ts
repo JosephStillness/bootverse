@@ -6,22 +6,26 @@ import {Prisma} from '@/generated/prisma/client';
 import {parseFilters,type CatalogueFilters} from './catalogue';
 import {surfaces,type CatalogueBoot} from './types';
 import {surfaceLabels} from './labels';
-import {productSpecifications,productOffers} from './product';
+import {productOffers} from './product';
+import {sourcedSpecifications} from '@/lib/product-data/projection';
 export const PAGE_SIZE=12;
 export function catalogueQuery(params:URLSearchParams){
  const filters=parseFilters(params);
  z.object({query:z.string().max(100),brand:z.string().max(120),silo:z.string().max(120),tier:z.string().max(100),surface:z.string().max(20)}).parse(filters);
  return {...filters,page:z.coerce.number().int().min(1).max(1000).parse(params.get('page')??1)};
 }
-export const productSelect={id:true,slug:true,sample:true,published:true,specifications:true,outsoleVariantId:true,colorwayId:true,
+const claimSelection={entryId:true,variantId:true,attribute:true,value:true,status:true,basis:true,sourceId:true,sourceUrl:true,observedAt:true,reviewedAt:true,source:{select:{name:true,type:true,status:true,authorizationStatus:true}}} as const;
+const claimQuery={where:{attribute:{in:['upperMaterial','weight','releaseDate']}},select:claimSelection,take:33,orderBy:{id:'asc' as const}};
+const activeEvidenceSource={OR:[{sourceId:null},{source:{status:'ACTIVE',authorizationStatus:{not:'DENIED'}}}]} satisfies Prisma.RecommendationEvidenceWhereInput;
+export const productSelect={id:true,slug:true,sample:true,published:true,specifications:true,outsoleVariantId:true,colorwayId:true,claims:claimQuery,
  colorway:{select:{id:true,generationId:true,name:true,swatch:true}},
- variant:{select:{id:true,tierModelId:true,surface:true,recommendationEvidence:{where:{approved:true,kind:"PRICE"},orderBy:[{observedAt:"desc"},{id:"asc"}],take:33,select:{id:true,kind:true,sourceKind:true,sourceUrl:true,observedAt:true,validUntil:true,payload:true}},tier:{select:{id:true,generationId:true,name:true,generation:{select:{id:true,familyId:true,name:true,family:{select:{id:true,brandId:true,name:true,brand:{select:{id:true,name:true}}}}}}}}}}} satisfies Prisma.CatalogueEntrySelect;
+ variant:{select:{id:true,tierModelId:true,surface:true,claims:claimQuery,recommendationEvidence:{where:{approved:true,kind:"PRICE",...activeEvidenceSource},orderBy:[{observedAt:"desc"},{id:"asc"}],take:33,select:{id:true,kind:true,sourceKind:true,sourceUrl:true,observedAt:true,validUntil:true,payload:true,countryCode:true}},tier:{select:{id:true,generationId:true,name:true,generation:{select:{id:true,familyId:true,name:true,family:{select:{id:true,brandId:true,name:true,brand:{select:{id:true,name:true}}}}}}}}}}} satisfies Prisma.CatalogueEntrySelect;
 type Row=Prisma.CatalogueEntryGetPayload<{select:typeof productSelect}>;
 function product(row:Row):CatalogueBoot{
  const tier=row.variant.tier,generation=tier.generation,family=generation.family;
  return {id:row.id,slug:row.slug,outsoleVariantId:row.outsoleVariantId,colorwayId:row.colorwayId,sample:row.sample,
  offers:productOffers(row.sample,row.id,row.variant.recommendationEvidence.map(e=>({...e,observedAt:e.observedAt.toISOString(),validUntil:e.validUntil.toISOString()}))),
- specifications:productSpecifications(row.sample,row.specifications),brand:family.brand,family:{id:family.id,brandId:family.brandId,name:family.name},generation:{id:generation.id,familyId:generation.familyId,name:generation.name},tier:{id:tier.id,generationId:tier.generationId,name:tier.name},variant:{id:row.variant.id,tierModelId:row.variant.tierModelId,surface:surfaces.includes(row.variant.surface as typeof surfaces[number])?row.variant.surface as typeof surfaces[number]:null},colorway:row.colorway};
+ specifications:sourcedSpecifications(row.sample,row.specifications,row.id,row.variant.id,[...row.claims,...row.variant.claims]),brand:family.brand,family:{id:family.id,brandId:family.brandId,name:family.name},generation:{id:generation.id,familyId:generation.familyId,name:generation.name},tier:{id:tier.id,generationId:tier.generationId,name:tier.name},variant:{id:row.variant.id,tierModelId:row.variant.tierModelId,surface:surfaces.includes(row.variant.surface as typeof surfaces[number])?row.variant.surface as typeof surfaces[number]:null},colorway:row.colorway};
 }
 function matchingProducts(filters:CatalogueFilters){
  const clauses=[Prisma.sql`e.published=true`];
@@ -32,7 +36,7 @@ function matchingProducts(filters:CatalogueFilters){
  for(const word of filters.query.trim().split(/\s+/).filter(Boolean)){
   const pattern=`%${word.replace(/[\\%_]/g,'\\$&')}%`;
   clauses.push(Prisma.sql`concat_ws(' ',b.name,f.name,g.name,t.name,v.surface,c.name,
-   CASE v.surface WHEN 'FG' THEN 'Firm ground' WHEN 'AG' THEN 'Artificial grass' WHEN 'SG' THEN 'Soft ground' WHEN 'TF' THEN 'Turf' ELSE 'Unknown surface' END) ILIKE ${pattern}`);
+   CASE v.surface WHEN 'FG' THEN 'Firm ground' WHEN 'AG' THEN 'Artificial grass' WHEN 'SG' THEN 'Soft ground' WHEN 'TF' THEN 'Turf' WHEN 'IN' THEN 'Indoor' WHEN 'MG' THEN 'Multi-ground designation' WHEN 'OTHER' THEN 'Other manufacturer designation' ELSE 'Unknown surface' END) ILIKE ${pattern}`);
  }
  return Prisma.sql`FROM "CatalogueEntry" e JOIN "BootVariant" v ON v.id=e."outsoleVariantId"
   JOIN "BootTier" t ON t.id=v."tierModelId" JOIN "BootGeneration" g ON g.id=t."generationId"

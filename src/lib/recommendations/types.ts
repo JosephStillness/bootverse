@@ -1,7 +1,7 @@
 import type {ReviewAnalysis} from "./review-analysis";
 export type Surface = "FG" | "AG" | "TF" | "SG" | "IN";
 export type SourceKind = "MANUFACTURER" | "RETAILER" | "MEASUREMENT" | "EDITORIAL" | "COMMUNITY";
-export type Provenance = {id:string;sourceKind:SourceKind;sourceUrl:string;observedAt:string;validUntil:string};
+export type Provenance = {id:string;sourceKind:SourceKind;sourceUrl:string;observedAt:string;validUntil:string;countryCode?:string|null};
 export type Evidence = Provenance & (
   | {kind:"SURFACE";payload:{outsole:Surface;allowed:Surface[];denied:Surface[]}}
   | {kind:"PRICE";payload:{entryId:string;amount:string;currency:string;sizeSystem:string|null;size:string|null}}

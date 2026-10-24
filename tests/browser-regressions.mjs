@@ -96,3 +96,34 @@ export async function adminFilterRecovery(page,base='http://localhost:3100'){
  page.off('request',count);
  return 'PASS: identical/changed/reset filters, repeated submit, history, empty/error/retry';
 }
+
+export async function productDataProvenance(page,base='http://localhost:3100'){
+ // Mutations are allowed only in the owned browser QA fixture environment.
+ assert.equal(new URL(base).origin,'http://localhost:3100');
+ const request=async(method,path,data)=>{
+  const response=await page.request.fetch(base+path,{method,data,headers:{Origin:base}});
+  assert.equal(response.ok(),true);return response.json();
+ };
+ const sourceInput={name:'Synthetic nguồn '+('A'.repeat(95)),type:'MANUAL_RESEARCH',baseUrl:'https://example.test',accessMethod:'Manual QA fixture only'};
+ const source=await request('POST','/api/admin/product-sources',sourceInput);
+ const value='Synthetic D1 text <svg onload=alert(1)> is plain text';
+ const claim=await request('POST','/api/admin/products/qa-product-0/records',{kind:'claim',data:{entryId:'qa-product-0',sourceId:source.id,sourceUrl:'https://example.test/spec',observedAt:new Date(Date.now()-60000).toISOString(),attribute:'upperMaterial',value,basis:'REPORTED'}});
+ const decision={note:'Synthetic browser QA source check only.',sourceChecked:true};
+ await request('PATCH','/api/admin/product-claims/'+claim.id,{...decision,status:'PENDING_REVIEW',version:1});
+ await request('PATCH','/api/admin/product-claims/'+claim.id,{...decision,status:'VERIFIED',version:2});
+ await page.goto(base+'/boots/qa-product-0');
+ await page.getByText(value,{exact:true}).waitFor();
+ assert.match(await page.locator('#specifications').textContent(),/not independent scientific certification/);
+ assert.equal(await page.locator('#specifications svg[onload]').count(),0);
+ for(const width of [320,768,1024,1440]){
+  await page.setViewportSize({width,height:900});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ }
+ const link=page.locator('#specifications').getByRole('link').first();await link.focus();
+ assert.equal(await link.evaluate(el=>el===document.activeElement),true);
+ assert.equal(await link.getAttribute('rel'),'noopener noreferrer');
+ await request('PUT','/api/admin/product-sources/'+source.id,{...sourceInput,version:source.version,status:'ARCHIVED'});
+ await page.reload();assert.equal(await page.getByText(value,{exact:true}).count(),0);
+ assert.match(await page.locator('#specifications').textContent(),/No unambiguous, source-checked claim/);
+ return 'PASS: admin source/claim workflow, escaped provenance, 320/768/1024/1440 layouts, keyboard source link and source revocation';
+}

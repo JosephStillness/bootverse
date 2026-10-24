@@ -43,11 +43,11 @@ async function main(){
   const constraints=(await db.query<{name:string;kind:string;validated:boolean}>("SELECT conname AS name,contype AS kind,convalidated AS validated FROM pg_constraint WHERE connamespace='public'::regnamespace")).rows;
   counts.foreignKeys=constraints.filter(x=>x.kind==='f').length;counts.checks=constraints.filter(x=>x.kind==='c').length;
   if(constraints.some(x=>!x.validated))issues.push('unvalidated-constraints');
-  for(const name of ['UserProfile_username_format','BootReview_ratings_check','BootReview_analysis_consent_check','FootProfile_consent','CatalogueEntry_specifications_object','image_target','report_target','video_target','storage_deletion_key'])if(!constraints.some(x=>x.name===name&&x.kind==='c'))issues.push('missing-critical-check');
+  for(const name of ['UserProfile_username_format','BootReview_ratings_check','BootReview_analysis_consent_check','FootProfile_consent','CatalogueEntry_specifications_object','CatalogueEntry_publication_check','ProductSource_permissions_check','ProductIdentifier_scope_check','ProductClaim_value_check','ProductImage_permission_check','RecommendationEvidence_offer_scope','RecommendationEvidence_offer_entry_match','image_target','report_target','video_target','storage_deletion_key'])if(!constraints.some(x=>x.name===name&&x.kind==='c'))issues.push('missing-critical-check');
   const indexes=(await db.query<{valid:boolean;unique:boolean}>("SELECT i.indisvalid AS valid,i.indisunique AS unique FROM pg_index i JOIN pg_class t ON t.oid=i.indrelid WHERE t.relnamespace='public'::regnamespace")).rows;
   counts.uniqueIndexes=indexes.filter(x=>x.unique).length;if(indexes.some(x=>!x.valid))issues.push('invalid-indexes');
   const triggers=(await db.query<{name:string;enabled:string}>("SELECT t.tgname AS name,t.tgenabled AS enabled FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid WHERE c.relnamespace='public'::regnamespace AND NOT t.tgisinternal")).rows;
-  for(const name of ['PostVote_score','Comment_count','boot_review_identity','review_helpful_guard','image_cleanup'])if(!triggers.some(x=>x.name===name&&['O','A'].includes(x.enabled)))issues.push('missing-or-disabled-trigger');
+  for(const name of ['PostVote_score','Comment_count','boot_review_identity','review_helpful_guard','image_cleanup','product_lifecycle','sku_brand','sku_family_guard','sku_generation_guard','sku_entry_guard'])if(!triggers.some(x=>x.name===name&&['O','A'].includes(x.enabled)))issues.push('missing-or-disabled-trigger');
   await db.query('ROLLBACK');
  }finally{await db.end();}
  if(!issues.length){
