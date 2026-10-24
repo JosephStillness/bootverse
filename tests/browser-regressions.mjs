@@ -127,3 +127,67 @@ export async function productDataProvenance(page,base='http://localhost:3100'){
  assert.match(await page.locator('#specifications').textContent(),/No unambiguous, source-checked claim/);
  return 'PASS: admin source/claim workflow, escaped provenance, 320/768/1024/1440 layouts, keyboard source link and source revocation';
 }
+
+export async function productImportWorkflow(page,base='http://localhost:3100'){
+ assert.equal(new URL(base).origin,'http://localhost:3100');
+ await page.goto(base+'/admin/products/import');await page.getByRole('heading',{name:'Import with provenance.'}).waitFor();
+ await page.getByLabel('Registered source').selectOption('qa-import-source');
+ await page.getByLabel('Product data file').setInputFiles('public/data-import/synthetic-template.csv');
+ await page.getByText('Selected: synthetic-template.csv · CSV',{exact:true}).waitFor();
+ const validate=page.getByRole('button',{name:'Validate & preview'});await validate.click();await page.getByRole('heading',{name:'2. Inspect preview'}).waitFor();
+ assert.match(await page.getByRole('region',{name:'Import preview'}).textContent(),/NEW RECORD/);
+ const execute=page.getByRole('button',{name:'Execute import',exact:true});assert.equal(await execute.isDisabled(),true);
+ await page.getByRole('checkbox',{name:'I reviewed this preview.',exact:false}).check();
+ await execute.click();
+ await page.getByText('Import completed. No product was automatically published.',{exact:true}).waitFor();
+ await page.getByRole('region',{name:'Import batch report'}).getByText('SUCCEEDED',{exact:true}).waitFor();
+ const catalogue=await (await page.request.get(base+'/api/boots?q=Synthetic%20Example')).json();assert.equal(catalogue.total,0);
+ await validate.click();await page.getByRole('region',{name:'Import preview'}).getByText('Row 2 · EXACT MATCH',{exact:true}).waitFor();
+ assert.match(await page.getByRole('region',{name:'Import preview'}).textContent(),/NOOP/);
+ for(const width of [320,768,1024,1440]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);}
+ await page.getByLabel('Registered source').focus();await page.keyboard.press('Tab');assert.equal(await page.getByLabel('Product data file').evaluate(el=>el===document.activeElement),true);
+ assert.equal(new URL(page.url()).search,'');
+ const reportLink=page.getByRole('link',{name:'Download CSV report',exact:true});const response=await page.request.get(base+await reportLink.getAttribute('href'));assert.equal(response.status(),200);assert.match(response.headers()['content-type'],/text\/csv/);
+ const guest=await page.context().browser().newContext();try{const tab=await guest.newPage();await tab.goto(base+'/admin/products/import');await tab.waitForURL(url=>url.pathname==='/login');assert.equal(new URL(tab.url()).pathname,'/login');}finally{await guest.close();}
+ return 'PASS: CSV upload/source selection, mandatory preview and confirmation, draft persistence, repeat no-op, private report, guest protection and responsive keyboard flow';
+}
+
+export async function productEnrichmentWorkflow(page,base='http://localhost:3100'){
+ await page.setViewportSize({width:1440,height:1000});await page.goto(base+'/admin/products/enrich');
+ await page.getByRole('heading',{name:'Evidence before claims.'}).waitFor();
+ await page.getByLabel('Search product slugs').fill('qa-product-0');await page.getByRole('button',{name:'Search products',exact:true}).click();
+ await page.getByRole('button',{name:'qa-product-0',exact:true}).click();await page.getByText('Exact variant: qa-variant-0',{exact:false}).waitFor();
+ await page.getByLabel('Authorized source',{exact:true}).selectOption('qa-import-source');
+ await page.getByLabel('Evidence URL',{exact:true}).fill('https://example.test/d3-browser');
+ await page.getByLabel('Observed at (your local time)',{exact:true}).fill('2026-10-01T12:00');
+ await page.getByLabel('Document/source revision (optional)',{exact:true}).fill('synthetic-browser-doc-1');
+ await page.getByLabel('Attribute',{exact:true}).selectOption('heelStructure');
+ await page.getByLabel('Observed value',{exact:true}).fill('Synthetic D3 browser heel observation');
+ await page.getByRole('button',{name:'Preview enrichment',exact:true}).click();
+ await page.getByRole('region',{name:'Enrichment preview'}).waitFor();
+ await page.getByRole('checkbox',{name:'I reviewed this exact preview',exact:false}).check();
+ await page.getByRole('button',{name:'Save draft enrichment',exact:true}).click();
+ await page.getByText('Draft observations saved.',{exact:false}).waitFor();
+ await page.reload();await page.getByLabel('Search product slugs').fill('qa-product-0');await page.getByRole('button',{name:'Search products',exact:true}).click();
+ await page.getByRole('button',{name:'qa-product-0',exact:true}).click();await page.getByText('heelStructure · UNVERIFIED',{exact:true}).waitFor();
+ await page.getByLabel('Decision note (at least 10 characters)').fill('Synthetic owned QA evidence checked, not a real specification');
+ await page.getByRole('button',{name:'PENDING REVIEW',exact:true}).click();await page.getByText('heelStructure · PENDING REVIEW',{exact:true}).waitFor();
+ await page.getByLabel('Decision note (at least 10 characters)').fill('Synthetic owned QA evidence checked, not a real specification');
+ await page.getByRole('checkbox',{name:'I checked this observation',exact:false}).check();await page.getByRole('button',{name:'VERIFIED',exact:true}).click();await page.getByText('heelStructure · VERIFIED',{exact:true}).waitFor();
+ for(const width of [320,768,1024,1440]){await page.setViewportSize({width,height:1000});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);}
+ await page.setViewportSize({width:1440,height:1000});await page.getByLabel('Search product slugs').focus();await page.keyboard.press('Tab');assert.equal(await page.getByRole('button',{name:'Search products',exact:true}).evaluate(e=>e===document.activeElement),true);
+ await page.getByLabel('Authorized source',{exact:true}).selectOption('qa-import-source');
+ await page.getByText('Upload authorized product photos',{exact:true}).click();
+ await page.getByRole('checkbox',{name:'I have permission to store these files',exact:false}).check();
+ const picker=page.getByLabel('Choose photos or drop them here',{exact:true});await picker.setInputFiles('tests/fixtures/synthetic-product.png');await page.getByRole('button',{name:'Remove selected photo 1',exact:true}).click();await picker.setInputFiles('tests/fixtures/synthetic-product.png');await page.getByRole('button',{name:'Upload selected photos',exact:true}).click();await page.getByRole('button',{name:'Use image 1',exact:true}).waitFor();
+ const imageSrc=await page.getByRole('img',{name:'Community photo 1',exact:true}).getAttribute('src');await page.getByRole('button',{name:'Use image 1',exact:true}).click();
+ await page.getByLabel('Evidence URL',{exact:true}).fill('https://example.test/d3-browser-photo');await page.getByLabel('Observed at (your local time)',{exact:true}).fill('2026-10-01T12:00');await page.getByRole('checkbox',{name:'Include technical observation',exact:true}).uncheck();await page.getByText('Attach image metadata',{exact:true}).click();await page.getByRole('checkbox',{name:'Include product asset',exact:true}).check();await page.getByLabel('Image attribution',{exact:true}).fill('Synthetic owned QA image');await page.getByLabel('Alt text',{exact:true}).fill('Synthetic browser product photo');await page.getByRole('checkbox',{name:'Primary image (only if none exists)',exact:true}).check();
+ await page.getByRole('button',{name:'Preview enrichment',exact:true}).click();await page.getByRole('region',{name:'Enrichment preview'}).waitFor();await page.getByRole('checkbox',{name:'I reviewed this exact preview',exact:false}).check();await page.getByRole('button',{name:'Save draft enrichment',exact:true}).click();await page.getByText('Synthetic browser product photo · UNVERIFIED · rights: UNKNOWN',{exact:true}).waitFor();
+ const guest=await page.context().browser().newContext();try{assert.equal((await guest.request.get(base+imageSrc)).status(),404);}finally{await guest.close();}
+ await page.getByText('Update usage permission',{exact:true}).click();await page.getByRole('combobox',{name:'Permission status',exact:true}).selectOption('GRANTED');await page.getByLabel('Permission reference',{exact:true}).fill('https://example.test/owned-fixture-license');await page.getByLabel('Permission evidence',{exact:true}).fill('Synthetic solid-color fixture generated for isolated QA; no third-party photograph');await page.getByLabel('Reason for rights update',{exact:true}).fill('Synthetic owned QA license documented, not a real boot photo');await page.getByRole('button',{name:'Save permission for review',exact:true}).click();await page.getByText('Synthetic browser product photo · UNVERIFIED · rights: GRANTED',{exact:true}).waitFor();
+ const assetCard=page.locator('section.import-panel').filter({has:page.getByRole('heading',{name:'Evidence & conflicts',exact:true})}).locator('.import-row').filter({hasText:'Synthetic browser product photo'});
+ for(const status of ['PENDING REVIEW','VERIFIED']){await page.getByLabel('Decision note (at least 10 characters)').fill('Synthetic owned QA asset source and licensing checked');await page.getByRole('checkbox',{name:'I checked this observation',exact:false}).check();await assetCard.getByRole('button',{name:status,exact:true}).click();await page.getByText('Synthetic browser product photo · '+status.replaceAll(' ','_')+' · rights: GRANTED',{exact:true}).waitFor();}
+ await page.goto(base+'/boots/qa-product-0');await page.getByText('Synthetic D3 browser heel observation',{exact:true}).waitFor();await page.getByRole('img',{name:'Synthetic browser product photo',exact:true}).waitFor();assert.match(await page.getByRole('heading',{name:'Source observations'}).textContent(),/Source observations/);
+ await page.goto(base+'/admin/products/enrich');await page.getByRole('heading',{name:'Evidence before claims.'}).waitFor();
+ return 'PASS: persisted enrichment after reload, explicit evidence review, authorized upload/preview removal, licensed image review and sourced public projection, exact variant, keyboard and 320/768/1024/1440 layout';
+}

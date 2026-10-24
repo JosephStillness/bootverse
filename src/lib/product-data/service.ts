@@ -1,4 +1,5 @@
 import "server-only";
+import {compareClaims} from "@/lib/enrichment/observations";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { getDb } from "@/lib/db";
@@ -88,7 +89,7 @@ export async function saveSource(actor: Principal | null, input: unknown, id?: s
       if (!previous) throw new CommunityError(404, "Source not found.");
       if (previous.version !== version) throw new CommunityError(409, "This source changed. Reload its current version.");
       if (previous.baseUrl !== data.baseUrl || previous.brandId !== (data.brandId ?? null) || previous.type !== data.type) {
-        const linked = await tx.productSource.findUnique({ where: { id }, select: { _count: { select: { entries: true, claims: true, identifiers: true, images: true, offers: true } } } });
+        const linked = await tx.productSource.findUnique({ where: { id }, select: { _count: { select: { entries: true, claims: true, identifiers: true, images: true, offers: true, imports: true, sourceRecords: true } } } });
         if (linked && Object.values(linked._count).some(n => n > 0)) throw new CommunityError(409, "A referenced source cannot change origin or manufacturer. Register a new source.");
       }
     }
@@ -152,7 +153,8 @@ export async function addProductRecord(actor: Principal | null, id: string, inpu
     if (envelope.kind === "image") {
       const data = productImageSchema.parse(envelope.data); await activeSource(tx, data.sourceId, brandId);
       if (data.uploadedImageId) {
-        const image = await tx.uploadedImage.findFirst({ where: { id: data.uploadedImageId, ownerId: user.id, state: "READY", status: "PUBLISHED" }, select: { id: true } });
+        const image = await tx.uploadedImage.findFirst({ where: { id: data.uploadedImageId, ownerId: user.id, state: "READY", status: "PUBLISHED" }, select: { id: true,productEntryId:true } });
+        if (image?.productEntryId&&image.productEntryId!==id)throw new AccessError(403,"This upload belongs to another product.");
         if (!image) throw new AccessError(403, "Choose your own ready upload. Storage paths are never accepted.");
       }
       const row = await tx.productImage.create({ data: { ...data, entryId: id } });
@@ -185,7 +187,7 @@ export async function decideRecord(actor: Principal | null, kind: "claim" | "ima
       if (source.type === "MANUFACTURER" && new URL(current.sourceUrl).hostname !== new URL(source.baseUrl).hostname) throw new CommunityError(400, "Manufacturer evidence URL must match its registered origin.");
       if (kind === "claim" && "attribute" in current) {
         const conflict = await tx.productClaim.findMany({ where: { id: { not: id }, attribute: current.attribute, status: "VERIFIED", ...(current.entryId ? { OR: [{ entryId: current.entryId }, { variantId: (await tx.catalogueEntry.findUniqueOrThrow({ where: { id: current.entryId }, select: { outsoleVariantId: true } })).outsoleVariantId }] } : { OR: [{ variantId: current.variantId }, { entry: { outsoleVariantId: current.variantId! } }] }) }, select: { value: true }, take: 201 });
-        if (conflict.length > 200 || conflict.some(c => JSON.stringify(c.value) !== JSON.stringify(current.value))) throw new CommunityError(409, "Conflicting verified observations require explicit conflict review.");
+        if (conflict.length > 200 || conflict.some(c => compareClaims(current.attribute,c.value,current.value)==="CONFLICT")) throw new CommunityError(409, "Conflicting verified observations require explicit conflict review.");
       }
       if (kind === "image" && "licenseStatus" in current && current.licenseStatus !== "GRANTED") throw new CommunityError(400, "Image use requires documented permission.");
     }

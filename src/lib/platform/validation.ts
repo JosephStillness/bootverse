@@ -3,7 +3,7 @@ import { text } from "@/lib/community/validation";
 export const targetKinds = ["POST", "COMMENT", "REVIEW", "IMAGE", "CREATOR"] as const;
 export type TargetKind = typeof targetKinds[number];
 export const targetSchema = z.object({ kind: z.enum(targetKinds), id: text(1, 100) }).strict();
-export const imageTargetSchema = z.object({ kind: z.enum(["POST", "REVIEW", "AVATAR", "COVER"]), id: text(1, 100) }).strict();
+export const imageTargetSchema = z.object({ kind: z.enum(["POST", "REVIEW", "AVATAR", "COVER", "PRODUCT"]), id: text(1, 100) }).strict();
 export type ImageTarget = z.infer<typeof imageTargetSchema>;
 export const reportReasons = ["spam", "harassment", "offensive", "misleading-review", "copyright", "inappropriate-image", "other"] as const;
 export const reportSchema = targetSchema.extend({ reason: z.enum(reportReasons), explanation: text(1, 1000).nullable().default(null) }).strict();

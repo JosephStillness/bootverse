@@ -41,6 +41,7 @@
     "@prisma/client": "7.10.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.4.0",
+    "csv-parse": "7.0.3",
     "next": "16.4.3",
     "next-auth": "5.0.0-beta.32",
     "nodemailer": "10.1.4",

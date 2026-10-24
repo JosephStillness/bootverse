@@ -2199,3 +2199,45 @@
 .comparison-table th,.comparison-table td { min-width: 12rem; max-width: 22rem; padding: 1rem; border: 1px solid var(--border, #e5e5e2); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
 .comparison-table td > span,.comparison-table td > a { display: block; margin-top: .5rem; }
 .comparison-table th:first-child { min-width: 8rem; }
+
+/* D2 import workspace reuses the community/account design tokens. */
+.import-page { max-width: 1240px; }
+.import-intro { max-width: 46rem; margin-block: 1rem 2rem; color: var(--muted-foreground); }
+.import-layout { display:grid; grid-template-columns:minmax(0,3fr) minmax(0,2fr); gap:1.5rem; align-items:start; }
+.import-panel { min-width:0; padding:1.5rem; background:var(--card); border:1px solid var(--border); border-radius:var(--radius); margin-block:1.5rem; }
+.import-panel h2 { margin-bottom:1rem; font-size:1.35rem; font-weight:600; }
+.import-panel p,.import-panel li { margin-block:.75rem; line-height:1.7; overflow-wrap:anywhere; }
+.import-panel ol { list-style:decimal; padding-left:1.5rem; }
+.import-panel details { margin-block:1rem; }
+.import-panel summary { cursor:pointer; min-height:2.75rem; padding-block:.65rem; overflow-wrap:anywhere; }
+.import-panel pre { white-space:pre-wrap; overflow-wrap:anywhere; font-size:.8rem; line-height:1.6; padding:1rem; background:var(--background); }
+.import-panel input[type=file] { max-width:100%; min-height:2.75rem; padding-block:.65rem; }
+.import-note { color:var(--muted-foreground); font-size:.875rem; }
+.import-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1rem; margin-block:1.5rem; }
+.import-stats dt { font-size:.8rem; text-transform:capitalize; color:var(--muted-foreground); }
+.import-stats dd { font-size:1.65rem; font-weight:600; }
+.import-row { border-top:1px solid var(--border); padding-block:1rem; min-width:0; }
+.import-row h3 { font-weight:600; font-size:1rem; }
+.import-row button { max-width:100%; white-space:normal; overflow-wrap:anywhere; }
+.import-error { border-left:3px solid var(--foreground); padding-left:1rem; }
+@media(max-width:767px){.import-layout { grid-template-columns:minmax(0,1fr); gap:0; }.import-panel { padding:1rem; }.import-stats { grid-template-columns:repeat(2,minmax(0,1fr)); }.import-panel .account-actions { flex-wrap:wrap; }}
+
+/* Product enrichment uses the existing import workspace and public detail rhythm. */
+.product-gallery { display:grid; gap:1rem; min-width:0; }
+.product-photo { position:relative; aspect-ratio:4/3; background:var(--surface,#fff); border:1px solid var(--border,#e5e5e2); }
+.product-photo.primary { aspect-ratio:1; }
+.enrichment-columns { display:grid; gap:1.5rem; min-width:0; }
+.enrichment-columns > * { min-width:0; }
+.enrichment-claims { display:grid; gap:1rem; padding:0; list-style:none; }
+.enrichment-claims li { border-top:1px solid var(--border,#e5e5e2); padding-top:1rem; overflow-wrap:anywhere; }
+.enrichment-claims pre { white-space:pre-wrap; overflow-wrap:anywhere; }
+.enrichment-upload-preview { position:relative; width:8rem; aspect-ratio:1; }
+@media (min-width:1024px) { .enrichment-columns { grid-template-columns:minmax(0,1fr) minmax(0,1fr); align-items:start; } }
+.enrichment-columns select { width:100%; min-width:0; max-width:100%; }
+.enrichment-columns button { max-width:100%; white-space:normal; overflow-wrap:anywhere; }
+.enrichment-columns form { display:grid; gap:.5rem; margin-block:1rem; }
+.enrichment-columns label { display:block; margin-top:.75rem; line-height:1.5; font-weight:500; }
+.enrichment-columns :is(input:not([type=checkbox]):not([type=file]),textarea,select) { display:block; width:100%; min-width:0; min-height:44px; border:1px solid var(--border); border-radius:4px; background:var(--card); padding:.65rem .75rem; }
+.enrichment-columns textarea { min-height:6rem; }
+.enrichment-columns label:has(input[type=checkbox]) { display:flex; align-items:flex-start; gap:.5rem; min-height:44px; padding-block:.5rem; }
+.enrichment-columns input[type=checkbox] { flex-shrink:0; width:1.15rem; height:1.15rem; margin-top:.15rem; }

@@ -42,9 +42,13 @@ export async function imageParent(db: Db, id: string): Promise<{
     ownerId: string;
     published: boolean;
 }> {
-    const r = await db.uploadedImage.findUnique({ where: { id }, select: { postId: true, reviewId: true, creatorId: true, profile: { select: { userId: true, user: { select: userSelect } } } } });
+    const r = await db.uploadedImage.findUnique({ where: { id }, select: { postId: true, reviewId: true, creatorId: true, productEntryId: true, ownerId:true, profile: { select: { userId: true, user: { select: userSelect } } } } });
     if (!r)
         throw new CommunityError(404, "Image not found.");
+    if(r.productEntryId){
+        const photo=await db.productImage.findFirst({where:{uploadedImageId:id,entryId:r.productEntryId,status:"VERIFIED",licenseStatus:"GRANTED",reviewedAt:{not:null},entry:{published:true},source:{status:"ACTIVE",authorizationStatus:{in:["GRANTED","NOT_REQUIRED"]}}},select:{id:true}});
+        return {ownerId:r.ownerId,published:!!photo};
+    }
     if (r.postId)
         return targetInfo(db, "POST", r.postId);
     if (r.reviewId)
@@ -54,6 +58,11 @@ export async function imageParent(db: Db, id: string): Promise<{
     return { ownerId: r.profile?.userId ?? "", published: active(r.profile?.user ?? null) };
 }
 export async function uploadTarget(db: Db, target: ImageTarget) {
+    if(target.kind === "PRODUCT"){
+        const entry=await db.catalogueEntry.findUnique({where:{id:target.id},select:{id:true}});
+        if(!entry)throw new CommunityError(404,"Product not found.");
+        return {ownerId:"",published:true,link:{productEntryId:target.id},limit:8};
+    }
     if (target.kind === "AVATAR") {
         const p = await db.userProfile.findUnique({ where: { id: target.id }, select: { userId: true, user: { select: userSelect } } });
         if (!p)

@@ -30,7 +30,7 @@ export interface Colorway {
   id: string;
   generationId: string;
   name: string;
-  swatch: string;
+  swatch: string | null;
 }
 export interface BootEntry {
   id: string;

@@ -48,3 +48,24 @@ Sprint 3.4:187 unit tests and68 isolated integration tests passed. Lint/typechec
 - [x] Complete docs/DATA_D1_SCHEMA_SOURCE_REGISTRY_REPORT.md with actual outcomes and D2 readiness.
 
 D1: 247 unit tests and91 isolated integration/performance tests pass; lint/typecheck/Prisma/build, four browser regressions and local Docker smoke pass. Both additive migrations applied only to guarded localhost after private backup and isolated restoration. Fourteen migrations/checksums/constraints/triggers/drift pass; 8 entries/1 user/0 reviews and existing identities/URLs/specifications preserved. Full/runtime dependency audits0. No Neon migration, deployment, push or D2 work. See the D1 report for earlier failed attempts and remaining limits.
+
+# Data D2 checkpoints
+
+- [x] Canonical schemas, bounded CSV/JSON parsing, normalization and malicious-input tests.
+- [x] Read-only deterministic identity/duplicate/conflict preview and tested adapter contract.
+- [x] Additive tracking migration and atomic idempotent import services with isolated reliability tests.
+- [x] Secure ADMIN preview/execute/history/report UI and endpoints; no remote writes or auto-publication.
+- [x] Synthetic 10/100/1,000/5,000 measurements, regression/browser/security review and all quality checks.
+- [x] Templates, canonical fixtures, usage/mapping guide and completed D2 report with actual results.
+
+# Data D3 checkpoints
+
+- [x] Inspect D1/D2 and document actual prerequisites.
+- [x] Test normalization, explicit unknowns, contextual conflicts and quality/freshness rules.
+- [x] Extend observation/asset metadata safely and private product uploads.
+- [x] Implement exact-target, signed preview and atomic idempotent batch enrichment.
+- [x] Integrate sourced public attributes/images, admin workflow and reporting.
+- [x] Run isolated regressions, browser tests, measurements and security review.
+- [x] Complete DATA_D3_ENRICHMENT_REPORT.md; no D4 work.
+
+D3: 311 unit/component tests (34 files), 117 isolated integration/security/storage/performance tests and six relevant browser suites pass. Lint, named post-build typecheck, build, Prisma and audits pass. D3 complete local workflow includes licensed asset review and public projection. Persistent local DB remains 14 migrations, 8 sample products/1 user/0 reviews; D2/D3 activation migrations are deliberately pending. No Neon migration, deployment, push or D4/D5 work. See docs/DATA_D3_ENRICHMENT_REPORT.md.

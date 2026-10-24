@@ -55,3 +55,24 @@ Approved scope: the supplied D1 specification. No crawling/import pipeline, clou
 6. Execute regressions, database/index checks, build and D1 report with mappings, Mermaid, transition rules, migration rollout and honest limitations. After disposable rehearsals, back up and preflight the explicitly guarded localhost development DB before applying this additive local change. Never migrate the configured Neon or other remote target automatically.
 
 Risks: existing duplicate brand names must stop the migration, not be merged/deleted. A source's permission is not product authenticity. Colorways share a variant only by explicit curation; different constructions can use different variant IDs even with identical tier/outsole labels. Product images are metadata associations, not a new upload/storage implementation. Legacy publication/specification write compatibility remains until a later audited migration.
+
+# Data D2 — Structured product imports
+
+Scope: supplied D2 specification; preserve the completed D1 checkpoint. CSV/JSON only plus a tested bounded feed adapter interface; no configured authorized live feed exists, so no live fetch, crawling, image download, remote database writes, deployment or push.
+
+1. Contracts/parsing: strict canonical records, UTF-8/BOM/quoted CSV and explicit mapping, bounded JSON depth/bytes/rows, deterministic normalization. Verify focused parser/normalization/security tests before persistence.
+2. Read-only preview: resolve scoped SKU/source identity and explicit construction keys, flag display-name/identity ambiguity and conflicts. No fuzzy or implicit colorway construction merging. Bind execution to a signed, expiring checksum/state preview; preview makes no DB/storage writes.
+3. Add minimal batch, row-stage and source-record tracking. Bulk atomic persistence up to 5,000 bounded records; exact repeats no-op, existing-record changes staged only, new listings DRAFT/unverified. Recheck source permission/admin role, serialize import execution, unique constraints and stable source IDs; recover interrupted intent safely. Reuse D1 provenance/image/offer rules.
+4. Minimal ADMIN import page: select source, upload CSV/JSON, mapping, preview diagnostics, explicit confirmation, batch/report inspection and formula-safe CSV export. Preserve moderation UI and existing public pages.
+5. Isolated DB tests: duplicates/overlap/concurrency, stale preview, rollback/recovery, auth/source permission, all earlier platform regressions. Synthetic 10/100/1,000/5,000-record performance measurements; browser workflow/responsive checks; Prisma/types/lint/tests/build and security review.
+6. Document contracts, fixtures/templates, actual measurements, rollback/cleanup policy, limitations and D3 readiness in docs/DATA_D2_IMPORT_PIPELINE_REPORT.md. No D3 work.
+
+Identity: source record IDs are stable per source; SKUs are case-preserving brand/region scoped. Same names alone never attach a new feed record to a live variant. An explicit construction key permits sharing within that source/generation/tier/outsole only; otherwise each source record gets its own construction. Unknown swatches must be represented as NULL rather than invented colors. Published products and verified claims are never changed by import; proposed changes/conflicts are retained in staged rows for later review.
+
+Execution policy: ATOMIC, including import metadata rows/source mappings and draft hierarchies. A separately recorded RUNNING intent survives process interruption; retries claim a database transaction lock before recovery, then replay committed results or safely resume. No uploaded raw files are retained. Canonical staged rows and diagnostics can be pruned without deleting source idempotency mappings. Local-only database guard applies to every import write, including HTTP.
+
+## Data D3 — source-backed enrichment
+
+Preserve the uncommitted D2 implementation and complete its documentation/browser gate alongside D3. Reuse D1 claims/images and D2 batch/row provenance; do not add parallel observation/storage systems. New evidence is a draft, identity never changes, verification remains an explicit existing administrator action. All migration/write tests use owned disposable local databases. No Neon migration, live collection, AWS resource, publication automation, deployment or push.
+
+Slices: (1) tested normalization/contextual comparison contracts; (2) additive observation/asset metadata and private product upload targets; (3) signed exact-target preview and atomic retry-safe batch persistence; (4) quality/freshness assessment and public projection; (5) accessible admin enrichment workbench; (6) isolated integration, browser and 10/100/1000 measurements; (7) security/code review and D2/D3 reports.

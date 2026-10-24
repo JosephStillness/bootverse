@@ -64,6 +64,24 @@ export async function productMigrationTests(t: TestContext, localUrl: string) {
       await assert.rejects(db.query(`UPDATE "BootFamily" SET "brandId"='d1-other' WHERE id='d1-family'`), /across brands/);
       await assert.rejects(db.query(`INSERT INTO "ProductClaim"(id,"entryId","variantId",attribute,value,basis,"sourceId","sourceUrl","observedAt","updatedAt") VALUES('d1-mixed','d1-private','d1-ag','upperMaterial','"Synthetic"','REPORTED','d1-source','https://example.test/spec',now(),now())`), /check constraint/);
     });
+    await t.test('D2 additive tracking preserves existing D1 identities and allows explicit unknown swatches',async()=>{
+      const before=(await db.query('SELECT id,slug,status,published FROM "CatalogueEntry" ORDER BY id')).rows;
+      await db.query(await readFile('prisma/migrations/20261024030000_product_imports/migration.sql','utf8'));
+      assert.deepEqual((await db.query('SELECT id,slug,status,published FROM "CatalogueEntry" ORDER BY id')).rows,before);
+      assert.equal((await db.query('SELECT count(*)::int n FROM "ProductImportBatch"')).rows[0].n,0);
+      await db.query('UPDATE "BootColorway" SET swatch=NULL WHERE id=\'d1-color\'');
+      await assert.rejects(db.query(`INSERT INTO "ProductImportBatch"(id,"sourceId",format,checksum,"idempotencyKey",status) VALUES('bad','d1-source','JSON','bad','short','SUCCEEDED')`),/check constraint/);
+    });
+    await t.test('D3 expansion preserves legacy claims and adds bounded original observations and private product targets',async()=>{
+      const before=(await db.query('SELECT id,slug,status,published FROM "CatalogueEntry" ORDER BY id')).rows;
+      const claims=(await db.query('SELECT id,attribute,value,status FROM "ProductClaim" ORDER BY id')).rows;
+      await db.query(await readFile('prisma/migrations/20261024040000_product_enrichment/migration.sql','utf8'));
+      assert.deepEqual((await db.query('SELECT id,slug,status,published FROM "CatalogueEntry" ORDER BY id')).rows,before);
+      assert.deepEqual((await db.query('SELECT id,attribute,value,status FROM "ProductClaim" ORDER BY id')).rows,claims);
+      await db.query(`INSERT INTO "ProductClaim"(id,"entryId",attribute,value,basis,"sourceId","sourceUrl","observedAt","updatedAt") VALUES('d3-unknown','d1-private','heelStructure','{"unknown":true}','REPORTED','d1-source','https://example.test/spec',now(),now())`);
+      assert.equal((await db.query(`SELECT value FROM "ProductClaim" WHERE id='d3-unknown'`)).rows[0].value.unknown,true);
+      await assert.rejects(db.query(`UPDATE "ProductClaim" SET "observationKey"='invalid' WHERE id='d3-unknown'`),/check constraint/);
+    });
   } finally {
     await db.end();
     if (created) await admin.query(`DROP DATABASE "${name}"`);

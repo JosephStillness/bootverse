@@ -25,6 +25,7 @@ await command(['node_modules/prisma/build/index.js','migrate','deploy']);await c
 db=new pg.Client({connectionString:url.href});await db.connect();
 await db.query(`INSERT INTO "User"(id,email,role,"updatedAt") VALUES('qa-moderator','remediation@example.test','ADMIN',now())`);
 await db.query(`INSERT INTO "UserProfile"(id,"userId",username,"displayName","updatedAt") VALUES('qa-moderator','qa-moderator','qa-moderator','Synthetic QA moderator',now())`);
+await db.query(`INSERT INTO "ProductSource"(id,name,type,"baseUrl","accessMethod","authorizationStatus","permissionNotes","permissionUrl","authorizationCheckedAt","checkedById","updatedAt") VALUES('qa-import-source','Synthetic QA import source','MANUAL_RESEARCH','https://example.test','Synthetic fixture only','NOT_REQUIRED','Synthetic owned browser QA fixtures; not live product data','https://example.test/fixture-policy',now(),'qa-moderator',now())`);
 // Publication, metadata, pagination and variant fixtures: this database is disposable.
 await db.query(`INSERT INTO "BootGeneration"(id,"familyId",name) VALUES('qa-generation','mercurial','Synthetic QA generation')`);
 await db.query(`INSERT INTO "BootTier"(id,"generationId",name) VALUES('qa-tier-elite','qa-generation','Elite'),('qa-tier-pro','qa-generation','Pro')`);

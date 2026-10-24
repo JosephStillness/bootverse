@@ -1,3 +1,4 @@
+import {compareClaims,isExplicitUnknown} from "./comparison";
 import { z } from "zod";
 import { surfaces } from "@/lib/boots/types";
 import { currencyCodes } from "@/lib/foot-profile/currencies";
@@ -44,12 +45,15 @@ export const identifierSchema = z.object({
   region: z.string().regex(/^(UNSPECIFIED|GLOBAL|[A-Z]{2})$/).default("UNSPECIFIED"),
   sourceId: dataId, sourceUrl: publicSourceUrl,
 }).strict();
-export const textAttributes = ["upperMaterial", "upperTechnology", "outsoleConstruction", "studConfiguration", "closureSystem", "collarType", "tongueConfiguration", "surfaceDesignation", "manufacturerFitDescription", "construction"] as const;
+export const textAttributes = ["upperMaterial", "upperTechnology", "outsoleConstruction", "studConfiguration", "closureSystem", "collarType", "tongueConfiguration", "surfaceDesignation", "manufacturerFitDescription", "construction", "surfaceTexture", "toeBoxConstruction", "midfootConstruction", "heelStructure", "soleplateMaterial", "soleplateTechnology", "playingSurfaceGuidance"] as const;
 const observedAt = z.iso.datetime({ offset: true }).refine(v => Date.parse(v) <= Date.now(), "Observation cannot be in the future.");
 const target = { entryId: dataId.optional(), variantId: dataId.optional() };
-const claimBase = { ...target, sourceId: dataId, sourceUrl: publicSourceUrl, observedAt, basis: z.enum(["REPORTED", "MEASURED", "COMMUNITY", "EXPERT"]), notes: text.nullable().optional() };
+const claimBase = { ...target, sourceId: dataId, sourceUrl: publicSourceUrl, observedAt, basis: z.enum(["REPORTED", "MEASURED", "COMMUNITY", "EXPERT"]), notes: text.nullable().optional(), sourceRevision: z.string().trim().min(1).max(200).nullable().optional() };
 export const weightValue = z.object({ amount: z.number().finite().positive().max(1000), unit: z.enum(["g", "oz"]), size: z.string().trim().min(1).max(30), sizeSystem: z.enum(["UK", "US", "EU", "CM"]), method: text.optional() }).strict();
+export const allAttributes = [...textAttributes, "weight", "releaseDate", "additionalFeatures", "normalizedOutsoleCategory"] as const;
 export const claimSchema = z.union([
+  z.object({ ...claimBase, attribute: z.literal("normalizedOutsoleCategory"), value: z.enum(surfaces) }).strict(),
+  z.object({ ...claimBase, attribute: z.enum(allAttributes), value: z.object({ unknown: z.literal(true) }).strict() }).strict(),
   z.object({ ...claimBase, attribute: z.enum(textAttributes), value: text }).strict(),
   z.object({ ...claimBase, attribute: z.literal("weight"), value: weightValue }).strict(),
   z.object({ ...claimBase, attribute: z.literal("releaseDate"), value: z.iso.date() }).strict(),
@@ -57,7 +61,7 @@ export const claimSchema = z.union([
 ]).superRefine((data, ctx) => {
   if (Number(!!data.entryId) + Number(!!data.variantId) !== 1)
     ctx.addIssue({ code: "custom", message: "Choose exactly one product or construction variant." });
-  if (data.attribute === "weight" && data.basis === "MEASURED" && !data.value.method)
+  if (data.attribute === "weight" && data.basis === "MEASURED" && !("unknown" in data.value) && !data.value.method)
     ctx.addIssue({ code: "custom", path: ["value"], message: "Describe the measurement method." });
 });
 export const decisionSchema = z.object({ status: z.enum(claimStates), note: z.string().trim().min(10).max(1000), sourceChecked: z.boolean().default(false) }).strict().refine(v => v.status !== "VERIFIED" || v.sourceChecked, "Explicitly confirm that the claim was checked against its source.");
@@ -101,6 +105,6 @@ export function assessProduct(facts: ProductFacts) {
   if (facts.claims.length > 200) errors.push("claim_limit");
   if (facts.claims.some(c => c.status === "CONFLICTED")) errors.push("unresolved_claim_conflict");
   const verified = facts.claims.filter(c => c.status === "VERIFIED");
-  for (const attribute of new Set(verified.map(c => c.attribute))) if (new Set(verified.filter(c => c.attribute === attribute).map(c => JSON.stringify(c.value))).size > 1) errors.push(`conflicting_${attribute}`);
-  return { ready: errors.length === 0, errors, warnings, missingOptional: [...textAttributes, "weight", "releaseDate", "additionalFeatures"].filter(attribute => !verified.some(c => c.attribute === attribute)) };
+  for (const attribute of new Set(verified.map(c => c.attribute))) if (verified.filter(c=>c.attribute===attribute).some((c,i,group)=>group.slice(i+1).some(d=>compareClaims(attribute,c.value,d.value)==="CONFLICT"))) errors.push(`conflicting_${attribute}`);
+  return { ready: errors.length === 0, errors, warnings, missingOptional: [...textAttributes, "weight", "releaseDate", "additionalFeatures"].filter(attribute => !verified.some(c => c.attribute === attribute&&!isExplicitUnknown(c.value))) };
 }

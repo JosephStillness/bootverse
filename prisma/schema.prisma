@@ -44,6 +44,7 @@ model User {
   videos                CreatorVideo[]
   checkedProductSources ProductSource[] @relation("SourceChecker")
   checkedProductClaims  ProductClaim[] @relation("ClaimReviewer")
+  productImports ProductImportBatch[]
 }
 
 model UserProfile {
@@ -154,7 +155,7 @@ model BootColorway {
   id           String           @id
   generationId String
   name         String
-  swatch       String           @db.VarChar(7)
+  swatch       String?          @db.VarChar(7)
   colorNames   String[]         @default([])
   generation   BootGeneration   @relation(fields: [generationId], references: [id], onDelete: Restrict)
   entries      CatalogueEntry[]
@@ -185,7 +186,10 @@ model CatalogueEntry {
   identifiers ProductIdentifier[]
   claims ProductClaim[]
   productImages ProductImage[]
+  productUploads UploadedImage[]
   offers RecommendationEvidence[]
+  importRows ProductImportRow[]
+  sourceRecords ProductSourceRecord[]
 
   @@unique([outsoleVariantId, colorwayId])
   @@unique([id, outsoleVariantId])
@@ -415,6 +419,9 @@ model UploadedImage {
   post      Post?           @relation(fields: [postId], references: [id], onDelete: Cascade)
   reviewId  String?
   review    BootReview?     @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  productEntryId String?
+  productEntry CatalogueEntry? @relation(fields: [productEntryId], references: [id], onDelete: Cascade)
+  sha256 String? @db.VarChar(64)
   bytes     Int
   width     Int
   height    Int
@@ -425,6 +432,8 @@ model UploadedImage {
   reports   ContentReport[]
   productImages ProductImage[]
 
+  @@unique([productEntryId,sha256])
+  @@index([productEntryId])
   @@index([state, createdAt])
   @@index([ownerId, createdAt])
   @@index([profileId])
@@ -480,6 +489,7 @@ model ModerationAction {
   targetKey String         @db.VarChar(180)
   action    String         @db.VarChar(20)
   note      String         @db.VarChar(1000)
+  details   Json?
   createdAt DateTime       @default(now()) @db.Timestamptz(3)
 
   @@index([createdAt, id])
@@ -592,10 +602,13 @@ model RecommendationEvidence {
   entryId String?
   entry CatalogueEntry? @relation(fields: [entryId, variantId], references: [id, outsoleVariantId], onDelete: Restrict, onUpdate: Restrict)
   countryCode String? @db.VarChar(2)
+  importRowId String?
+  importRow ProductImportRow? @relation(fields: [importRowId], references: [id], onDelete: SetNull)
 
   @@index([variantId, approved, observedAt])
   @@index([sourceId])
   @@index([entryId, countryCode, observedAt])
+  @@index([importRowId])
 }
 
 enum ProductPublicationStatus {
@@ -649,6 +662,8 @@ model ProductSource {
   identifiers ProductIdentifier[]
   images ProductImage[]
   offers RecommendationEvidence[]
+  imports ProductImportBatch[]
+  sourceRecords ProductSourceRecord[]
 
   @@index([status, type, id])
   @@index([brandId])
@@ -694,14 +709,20 @@ model ProductClaim {
   reviewedAt DateTime? @db.Timestamptz(3)
   reviewNote String? @db.VarChar(1000)
   notes String? @db.VarChar(1000)
+  sourceRevision String? @db.VarChar(200)
+  originalObservation Json?
+  observationKey String? @unique @db.VarChar(64)
   version Int @default(1)
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  importRowId String?
+  importRow ProductImportRow? @relation(fields: [importRowId], references: [id], onDelete: SetNull)
 
   @@index([entryId, status, attribute])
   @@index([variantId, status, attribute])
   @@index([sourceId])
   @@index([reviewerId])
+  @@index([importRowId])
 }
 
 // Reuse upload storage/deletion; external images are references, never fetched here.
@@ -712,6 +733,7 @@ model ProductImage {
   uploadedImageId String?
   uploadedImage UploadedImage? @relation(fields: [uploadedImageId], references: [id], onDelete: Cascade)
   externalUrl String? @db.VarChar(2000)
+  assetKey String? @db.VarChar(64)
   sourceId String
   source ProductSource @relation(fields: [sourceId], references: [id], onDelete: Restrict)
   sourceUrl String @db.VarChar(2000)
@@ -727,8 +749,85 @@ model ProductImage {
   version Int @default(1)
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  importRowId String?
+  importRow ProductImportRow? @relation(fields: [importRowId], references: [id], onDelete: SetNull)
 
+  @@unique([entryId,assetKey])
   @@index([entryId, status, sortOrder])
   @@index([uploadedImageId])
   @@index([sourceId])
+  @@index([importRowId])
+}
+
+model ProductImportBatch {
+ id String @id @default(cuid())
+ sourceId String
+ source ProductSource @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+ actorId String?
+ actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+ purpose String @default("IMPORT") @db.VarChar(12)
+ format String @db.VarChar(10)
+ checksum String @db.VarChar(64)
+ idempotencyKey String @db.VarChar(100)
+ status String @default("RUNNING") @db.VarChar(12)
+ summary Json @default("{}")
+ sourceSnapshot Json @default("{}")
+ errorCode String? @db.VarChar(64)
+ startedAt DateTime @default(now()) @db.Timestamptz(3)
+ completedAt DateTime? @db.Timestamptz(3)
+ rows ProductImportRow[]
+ sourceRecords ProductSourceRecord[]
+
+ @@unique([sourceId,idempotencyKey])
+ @@unique([sourceId,id])
+ @@index([purpose,startedAt,id])
+ @@index([startedAt,id])
+ @@index([actorId])
+}
+
+model ProductSourceRecord {
+ id String @id @default(cuid())
+ sourceId String
+ source ProductSource @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+ recordId String @db.VarChar(120)
+ entryId String?
+ entry CatalogueEntry? @relation(fields: [entryId], references: [id], onDelete: SetNull)
+ checksum String @db.VarChar(64)
+ identityHash String @db.VarChar(64)
+ sourceUrl String @db.VarChar(2000)
+ observedAt DateTime @db.Timestamptz(3)
+ lastBatchId String
+ lastBatch ProductImportBatch @relation(fields: [sourceId,lastBatchId], references: [sourceId,id], onDelete: Restrict)
+ createdAt DateTime @default(now()) @db.Timestamptz(3)
+ updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+ @@unique([sourceId,recordId])
+ @@index([entryId])
+ @@index([lastBatchId])
+}
+
+model ProductImportRow {
+ id String @id @default(cuid())
+ batchId String
+ batch ProductImportBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+ rowNumber Int
+ recordId String? @db.VarChar(120)
+ entryId String?
+ entry CatalogueEntry? @relation(fields: [entryId], references: [id], onDelete: SetNull)
+ outcome String @db.VarChar(24)
+ action String @db.VarChar(16)
+ checksum String? @db.VarChar(64)
+ sourceUrl String? @db.VarChar(2000)
+ observedAt DateTime? @db.Timestamptz(3)
+ verificationStatus ProductVerificationState @default(UNVERIFIED)
+ data Json?
+ diagnostics Json @default("[]")
+ createdAt DateTime @default(now()) @db.Timestamptz(3)
+ claims ProductClaim[]
+ images ProductImage[]
+ offers RecommendationEvidence[]
+
+ @@unique([batchId,rowNumber])
+ @@index([entryId])
+ @@index([batchId,outcome,rowNumber])
 }

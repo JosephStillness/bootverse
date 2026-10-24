@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "products": [
+    {
+      "recordId": "synthetic-example-001",
+      "brand": "Synthetic Example Brand",
+      "family": "Synthetic Example Family",
+      "generation": "Synthetic Generation 1",
+      "tier": "Elite",
+      "outsole": "FG",
+      "colorway": "Synthetic blue / white",
+      "sku": "SYNTHETIC-SKU-001",
+      "skuRegion": "UNSPECIFIED",
+      "sourceUrl": "https://example.test/synthetic-product",
+      "observedAt": "2026-10-01T00:00:00Z",
+      "specifications": [],
+      "images": [],
+      "offers": []
+    }
+  ]
+}
