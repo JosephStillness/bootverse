@@ -19,6 +19,7 @@ import {productMigrationTests} from "./product-migration.integration";
 import {productDataTests} from "./product-data.integration";
 import {productEnrichmentTests} from "./product-enrichment.integration";
 import {productImportTests} from "./product-import.integration";
+import {productReviewTests} from "./product-review.integration";
 import {databaseVerificationTests} from "./database-verification.integration";
 import { communityTests } from "./community.integration";
 import { platformTests } from "./platform.integration";
@@ -555,6 +556,11 @@ test(
       assert.equal((await enrichmentAdmin.requestLink("enrichment-admin@example.test")).status,200);await enrichmentAdmin.verifyLastLink();
       assert.equal((await enrichmentMember.requestLink("enrichment-member@example.test")).status,200);await enrichmentMember.verifyLastLink();
       await productEnrichmentTests(t,{db,base,alice:enrichmentMember,bob:enrichmentAdmin,aliceId:(await enrichmentMember.session()).user.id,bobId:(await enrichmentAdmin.session()).user.id,storage:!!testStorage});
+      // D4 approval suite uses its own accounts so earlier limits and roles cannot mask failures.
+      const reviewAdmin=new Browser(),reviewSecond=new Browser(),reviewMember=new Browser();
+      for(const [browser,email] of [[reviewAdmin,"review-admin@example.test"],[reviewSecond,"review-second@example.test"],[reviewMember,"review-member@example.test"]] as const){assert.equal((await browser.requestLink(email)).status,200);await browser.verifyLastLink();}
+      const reviewSecondId=(await reviewSecond.session()).user.id;await db.query(`UPDATE "User" SET role='ADMIN' WHERE id=$1`,[reviewSecondId]);
+      await productReviewTests(t,{db,base,admin:reviewAdmin,second:reviewSecond,member:reviewMember,memberId:(await reviewMember.session()).user.id,adminId:(await reviewAdmin.session()).user.id});
       await t.test(
         "expired sessions and concurrent unique-username updates",
         async () => {

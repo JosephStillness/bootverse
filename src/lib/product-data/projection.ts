@@ -17,7 +17,8 @@ export function sourcedSpecifications(sample: boolean, legacy: unknown, entryId:
     const rows = relevant.filter(c => c.attribute === attribute);
     if (!rows.length && claims.length <= 32) continue;
     result[key] = { status: "unknown", reason: "No unambiguous, source-checked claim is available for this configuration." };
-    if (claims.length > 32 || rows.some(c => c.status === "CONFLICTED")) continue;
+    // D4: unverified/CONFLICTED incoming observations do not suppress a verified value.
+    if (claims.length > 32) continue;
     const checked = rows.filter(c => c.status === "VERIFIED" && c.reviewedAt && c.source.status === "ACTIVE" && c.source.authorizationStatus !== "DENIED");
     if (!checked.length || new Set(checked.map(c => JSON.stringify(c.value))).size !== 1) continue;
     const row = checked[0];

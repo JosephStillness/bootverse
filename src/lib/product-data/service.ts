@@ -1,4 +1,5 @@
 import "server-only";
+import { recordRevision } from "@/lib/product-review/facts";
 import {compareClaims} from "@/lib/enrichment/observations";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
@@ -6,15 +7,15 @@ import { getDb } from "@/lib/db";
 import { lockedActiveUser } from "@/lib/accounts/authorization-db";
 import { requireActiveUser, AccessError, type Principal } from "@/lib/accounts/authorization";
 import { CommunityError } from "@/lib/community/service";
-import { sourceSchema, brandSchema, productDraftSchema, identifierSchema, claimSchema, decisionSchema, publicationSchema, productImageSchema, offerSchema, registryQuery, dataId, assessProduct, canTransitionClaim, canTransitionProduct } from "./validation";
+import { sourceSchema, brandSchema, productDraftSchema, identifierSchema, claimSchema, decisionSchema, productImageSchema, offerSchema, registryQuery, dataId, assessProduct, canTransitionClaim } from "./validation";
 
-type Tx = Prisma.TransactionClient;
-function requireAdmin(actor: Principal | null) {
+export type Tx = Prisma.TransactionClient;
+export function requireAdmin(actor: Principal | null) {
   const user = requireActiveUser(actor);
   if (user.role !== "ADMIN") throw new AccessError(403, "Administrator access is required.");
   return user;
 }
-async function adminTx<T>(actor: Principal | null, run: (tx: Tx, user: Principal) => Promise<T>) {
+export async function adminTx<T>(actor: Principal | null, run: (tx: Tx, user: Principal) => Promise<T>) {
   requireAdmin(actor);
   try {
     return await getDb().$transaction(async tx => run(tx, requireAdmin(await lockedActiveUser(tx, actor))));
@@ -29,17 +30,17 @@ async function adminTx<T>(actor: Principal | null, run: (tx: Tx, user: Principal
   }
 }
 const versionSchema = z.number().int().positive();
-async function audit(tx: Tx, user: Principal, key: string, action: string, note: string) {
+export async function audit(tx: Tx, user: Principal, key: string, action: string, note: string) {
   await tx.moderationAction.create({ data: { actorId: user.id, targetKey: key, action, note } });
 }
-async function activeSource(tx: Tx, id: string, brandId?: string) {
+export async function activeSource(tx: Tx, id: string, brandId?: string) {
   const source = await tx.productSource.findUnique({ where: { id } });
   if (!source || source.status !== "ACTIVE" || source.authorizationStatus === "DENIED") throw new CommunityError(400, "An active, attributed source is required.");
   if (source.type === "MANUFACTURER" && brandId && source.brandId !== brandId) throw new CommunityError(400, "Manufacturer source belongs to a different brand.");
   return source;
 }
-const ancestry = { tier: { include: { generation: { include: { family: { include: { brand: true } } } } } } } as const;
-async function lockProduct(tx: Tx, id: string) {
+export const ancestry = { tier: { include: { generation: { include: { family: { include: { brand: true } } } } } } } as const;
+export async function lockProduct(tx: Tx, id: string) {
   const entry = await tx.catalogueEntry.findUnique({ where: { id: dataId.parse(id) }, select: { outsoleVariantId: true } });
   if (!entry) throw new CommunityError(404, "Product not found.");
   await tx.$queryRaw`SELECT id FROM "BootVariant" WHERE id=${entry.outsoleVariantId} FOR UPDATE`;
@@ -120,18 +121,6 @@ export async function createProduct(actor: Principal | null, input: unknown) {
     await audit(tx, user, `PRODUCT:${row.id}`, "CREATE_PRODUCT", "Created an attributed draft; not automatically published."); return row;
   });
 }
-export async function changePublication(actor: Principal | null, id: string, input: unknown) {
-  const data = publicationSchema.extend({ version: versionSchema }).parse(input);
-  return adminTx(actor, async (tx, user) => {
-    await lockProduct(tx, id);
-    const row = await snapshot(tx, id);
-    if (row.version !== data.version) throw new CommunityError(409, "This product changed. Reload before deciding.");
-    if (!canTransitionProduct(row.status, data.status)) throw new CommunityError(409, "Invalid publication transition; submit the draft for review first.");
-    if (data.status === "PUBLISHED" && !row.quality.ready) throw new CommunityError(400, `Publication blocked: ${row.quality.errors.join(", ")}.`);
-    const result = await tx.catalogueEntry.update({ where: { id }, data: { status: data.status, version: { increment: 1 } } });
-    await audit(tx, user, `PRODUCT:${id}`, "PRODUCT_STATUS", `${row.status} → ${data.status}: ${data.note}`); return result;
-  });
-}
 export async function addProductRecord(actor: Principal | null, id: string, input: unknown) {
   const envelope = z.object({ kind: z.enum(["identifier", "claim", "image", "offer"]), data: z.unknown() }).strict().parse(input);
   return adminTx(actor, async (tx, user) => {
@@ -193,6 +182,10 @@ export async function decideRecord(actor: Principal | null, kind: "claim" | "ima
     }
     const decision = { status: data.status, reviewedAt: data.status === "VERIFIED" ? new Date() : null, version: { increment: 1 } };
     const result = kind === "claim" ? await tx.productClaim.update({ where: { id }, data: { ...decision, reviewerId: user.id, reviewNote: data.note } }) : await tx.productImage.update({ where: { id }, data: decision });
-    await audit(tx, user, `${kind === "claim" ? "CLAIM" : "IMAGE_METADATA"}:${id}`, "VERIFY_PRODUCT", `${current.status} → ${data.status}: ${data.note}`); return result;
+    await audit(tx, user, `${kind === "claim" ? "CLAIM" : "IMAGE_METADATA"}:${id}`, "VERIFY_PRODUCT", `${current.status} → ${data.status}: ${data.note}`);
+    // D4 revision history: record when this decision changes what a published page shows.
+    const affected = entryId ? [entryId] : (await tx.catalogueEntry.findMany({ where: { outsoleVariantId: variantId!, status: "PUBLISHED" }, select: { id: true }, take: 100 })).map(e => e.id);
+    await recordRevision(tx, affected, user.id, `Evidence decision ${current.status} → ${data.status}: ${data.note}`, null);
+    return result;
   });
 }

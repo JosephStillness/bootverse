@@ -45,8 +45,8 @@ export function publicTechnical(rows: SourcedClaim[], entryId: string, variantId
     const relevant = rows.filter(r => r.entryId === entryId || r.variantId === variantId);
     for (const attribute of new Set(relevant.map(c => c.attribute))) {
         const group = relevant.filter(c => c.attribute === attribute);
-        if (group.some(c => c.status === 'CONFLICTED'))
-            continue;
+        // D4: only VERIFIED evidence shapes public output. Pending or CONFLICTED incoming
+        // observations never hide a verified published value; a reviewer must act explicitly.
         const verified = group.filter(c => c.status === 'VERIFIED' && c.reviewedAt && c.source.status === 'ACTIVE' && ['GRANTED', 'NOT_REQUIRED'].includes(c.source.authorizationStatus) && !isExplicitUnknown(c.value));
         if (verified.some((c, i) => verified.slice(i + 1).some(d => compareClaims(attribute, c.value, d.value) === 'CONFLICT')))
             continue;

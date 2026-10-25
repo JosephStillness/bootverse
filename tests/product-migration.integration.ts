@@ -82,6 +82,20 @@ export async function productMigrationTests(t: TestContext, localUrl: string) {
       assert.equal((await db.query(`SELECT value FROM "ProductClaim" WHERE id='d3-unknown'`)).rows[0].value.unknown,true);
       await assert.rejects(db.query(`UPDATE "ProductClaim" SET "observationKey"='invalid' WHERE id='d3-unknown'`),/check constraint/);
     });
+    await t.test('D4 approval expansion preserves every product state, publishes nothing and keeps review history append-only',async()=>{
+      const before=(await db.query('SELECT id,slug,status,published,version,"slugLocked" FROM "CatalogueEntry" ORDER BY id')).rows;
+      const claims=(await db.query('SELECT id,status,version FROM "ProductClaim" ORDER BY id')).rows;
+      await db.query(await readFile('prisma/migrations/20261025010000_product_approval/migration.sql','utf8'));
+      assert.deepEqual((await db.query('SELECT id,slug,status,published,version,"slugLocked" FROM "CatalogueEntry" ORDER BY id')).rows,before);
+      assert.deepEqual((await db.query('SELECT id,status,version FROM "ProductClaim" ORDER BY id')).rows,claims);
+      assert.equal((await db.query('SELECT count(*)::int n FROM "CatalogueEntry" WHERE "submittedAt" IS NOT NULL')).rows[0].n,0);
+      assert.equal((await db.query('SELECT count(*)::int n FROM "ProductReviewDecision"')).rows[0].n,0);
+      const entry=before[0].id;
+      await db.query(`INSERT INTO "ProductReviewDecision"(id,"entryId","entryKey",kind,reason,"entryVersion") VALUES('d4-note',$1::text,$1::text,'NOTE','Synthetic migration note only',1)`,[entry]);
+      await assert.rejects(db.query(`UPDATE "ProductReviewDecision" SET reason='Tampered synthetic note' WHERE id='d4-note'`),/append-only/);
+      await assert.rejects(db.query(`DELETE FROM "ProductReviewDecision" WHERE id='d4-note'`),/append-only/);
+      await assert.rejects(db.query(`INSERT INTO "ProductReviewDecision"(id,"entryId","entryKey",kind,reason,"entryVersion","toStatus","fromStatus") VALUES('d4-bad',$1::text,$1::text,'APPROVE','Approval without fingerprint',1,'PUBLISHED','PENDING_REVIEW')`,[entry]),/check constraint/);
+    });
   } finally {
     await db.end();
     if (created) await admin.query(`DROP DATABASE "${name}"`);

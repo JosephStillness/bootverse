@@ -45,6 +45,8 @@ model User {
   checkedProductSources ProductSource[] @relation("SourceChecker")
   checkedProductClaims  ProductClaim[] @relation("ClaimReviewer")
   productImports ProductImportBatch[]
+  productReviewDecisions ProductReviewDecision[]
+  productRevisions ProductRevision[]
 }
 
 model UserProfile {
@@ -190,12 +192,16 @@ model CatalogueEntry {
   offers RecommendationEvidence[]
   importRows ProductImportRow[]
   sourceRecords ProductSourceRecord[]
+  submittedAt DateTime? @db.Timestamptz(3)
+  reviewDecisions ProductReviewDecision[]
+  revisions ProductRevision[]
 
   @@unique([outsoleVariantId, colorwayId])
   @@unique([id, outsoleVariantId])
   @@index([colorwayId])
   @@index([published, id])
   @@index([status, createdAt, id])
+  @@index([status, submittedAt, id])
   @@index([sourceId])
 }
 
@@ -830,4 +836,51 @@ model ProductImportRow {
  @@unique([batchId,rowNumber])
  @@index([entryId])
  @@index([batchId,outcome,rowNumber])
+}
+
+// D4: append-only human review decisions. Rows are never updated or deleted by
+// the application; a trigger allows only FK SET NULL when a parent is removed.
+model ProductReviewDecision {
+  id String @id @default(cuid())
+  entryId String?
+  entry CatalogueEntry? @relation(fields: [entryId], references: [id], onDelete: SetNull)
+  entryKey String @db.VarChar(100)
+  actorId String?
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  kind String @db.VarChar(24)
+  fromStatus ProductPublicationStatus?
+  toStatus ProductPublicationStatus?
+  reason String @db.VarChar(2000)
+  details Json @default("{}")
+  entryVersion Int
+  reviewFingerprint String? @db.VarChar(64)
+  requestKey String? @unique @db.VarChar(160)
+  requestHash String? @db.VarChar(64)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  revisions ProductRevision[]
+
+  @@index([entryId, createdAt, id])
+  @@index([entryId, kind, createdAt])
+  @@index([kind, createdAt, id])
+  @@index([actorId])
+}
+
+// D4: snapshot of what the public page showed after each approved publication/change.
+model ProductRevision {
+  id String @id @default(cuid())
+  entryId String
+  entry CatalogueEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  revision Int
+  snapshot Json
+  snapshotHash String @db.VarChar(64)
+  actorId String?
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  decisionId String?
+  decision ProductReviewDecision? @relation(fields: [decisionId], references: [id], onDelete: SetNull)
+  reason String @db.VarChar(2000)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([entryId, revision])
+  @@index([decisionId])
+  @@index([actorId])
 }

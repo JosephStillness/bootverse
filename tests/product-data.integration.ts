@@ -18,7 +18,8 @@ export async function productDataTests(t: TestContext, { db, base, alice, bob, a
   const decide = (id: string, status: string, version: number) => admin(`/api/admin/product-claims/${id}`, { status, version, note, sourceChecked: true }, "PATCH");
   const state = async (id: string, status: string) => {
     const current = await (await alice.request(`/api/admin/products/${id}`)).json();
-    const r = await admin(`/api/admin/products/${id}`, { status, version: current.version, note }, "PATCH");
+    // D4: publication also requires explicit identity/evidence attestation.
+    const r = await admin(`/api/admin/products/${id}`, { status, version: current.version, note, ...(status === "PUBLISHED" ? { identityConfirmed: true, evidenceChecked: true } : {}) }, "PATCH");
     assert.equal(r.status, 200, await r.clone().text()); return r.json();
   };
   try {
@@ -102,7 +103,7 @@ export async function productDataTests(t: TestContext, { db, base, alice, bob, a
       assert.equal((await (await fetch(base + "/api/boots?q=Synthetic%20D1")).json()).boots.find((b: { id: string }) => b.id === entryId).specifications.upper.status, "unknown");
       await state(entryId, "ARCHIVED"); await state(entryId, "PENDING_REVIEW");
       const current = await (await alice.request(`/api/admin/products/${entryId}`)).json(); assert.ok(current.quality.errors.includes("unresolved_claim_conflict"));
-      assert.equal((await admin(`/api/admin/products/${entryId}`, { status: "PUBLISHED", version: current.version, note }, "PATCH")).status, 400);
+      assert.equal((await admin(`/api/admin/products/${entryId}`, { status: "PUBLISHED", version: current.version, note, identityConfirmed: true, evidenceChecked: true }, "PATCH")).status, 400);
     });
     await t.test("D1 licensed image metadata rejects arbitrary paths and never downloads external images", async () => {
       const image = { sourceId, sourceUrl: "https://example.test/photo", externalUrl: "https://example.test/synthetic.webp", altText: "Synthetic D1 image", attribution: "Synthetic owner", licenseStatus: "GRANTED", permissionNotes: note, permissionUrl: "https://example.test/license", isPrimary: true };

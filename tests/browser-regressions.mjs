@@ -191,3 +191,61 @@ export async function productEnrichmentWorkflow(page,base='http://localhost:3100
  await page.goto(base+'/admin/products/enrich');await page.getByRole('heading',{name:'Evidence before claims.'}).waitFor();
  return 'PASS: persisted enrichment after reload, explicit evidence review, authorized upload/preview removal, licensed image review and sourced public projection, exact variant, keyboard and 320/768/1024/1440 layout';
 }
+
+export async function productReviewWorkflow(page,base='http://localhost:3100'){
+ // Mutations are allowed only in the owned, disposable browser QA environment.
+ assert.equal(new URL(base).origin,'http://localhost:3100');
+ const noOverflow=async()=>{for(const width of [320,768,1024,1440]){await page.setViewportSize({width,height:1000});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);}await page.setViewportSize({width:1440,height:1000});};
+ await page.setViewportSize({width:1440,height:1000});
+ assert.equal((await page.request.get(base+'/boots/qa-review-draft')).status(),404);
+ await page.goto(base+'/admin/products/review');
+ await page.getByRole('heading',{name:'Approval queue.'}).waitFor();
+ await page.getByRole('button',{name:/^Draft\s*\d+$/}).click();
+ await page.getByRole('link',{name:/Synthetic QA generation/}).first().waitFor();
+ await page.getByRole('checkbox',{name:'Select qa-review-blocked'}).check();
+ await page.getByRole('button',{name:'Preview validation',exact:true}).click();
+ await page.getByRole('heading',{name:'Validation preview'}).waitFor();
+ assert.equal(await page.getByRole('button',{name:'Approve eligible (0)'}).isDisabled(),true);
+ await noOverflow();
+ await page.screenshot({path:'output/playwright/d4-review-queue-desktop.png',fullPage:true});
+ await page.setViewportSize({width:375,height:900});await page.screenshot({path:'output/playwright/d4-review-queue-mobile.png',fullPage:true});await page.setViewportSize({width:1440,height:1000});
+ await page.goto(base+'/admin/products/review/qa-review-blocked');
+ await page.getByText('Blocked',{exact:true}).first().waitFor();
+ assert.equal(await page.getByRole('button',{name:'Submit for review',exact:true}).isDisabled(),true);
+ await page.getByText('The outsole category is unknown',{exact:false}).waitFor();
+ await page.goto(base+'/admin/products/review/qa-review-draft');
+ await page.getByRole('heading',{name:'Decision'}).waitFor();
+ const decide=async(button,confirm,reason)=>{
+  await page.getByRole('button',{name:button,exact:true}).click();
+  const dialog=page.getByRole('dialog');await dialog.waitFor();
+  assert.equal(await dialog.getByRole('button',{name:confirm,exact:true}).isDisabled(),true);
+  await dialog.getByLabel('Reason (recorded in audit history)').fill(reason);
+  return dialog;
+ };
+ let dialog=await decide('Submit for review','Submit for review','Synthetic browser QA submission only.');
+ await dialog.getByRole('button',{name:'Submit for review',exact:true}).click();
+ await page.getByText('Submit for review: saved and recorded in history.',{exact:true}).waitFor();
+ dialog=await decide('Approve and publish','Approve and publish','Synthetic browser QA approval; fixture only.');
+ assert.equal(await dialog.getByRole('button',{name:'Approve and publish',exact:true}).isDisabled(),true,'attestation required');
+ await dialog.getByRole('checkbox',{name:/I confirm the exact identity/}).check();
+ await dialog.getByRole('button',{name:'Approve and publish',exact:true}).click();
+ await page.getByText('Approve and publish: saved and recorded in history.',{exact:true}).waitFor();
+ await page.getByRole('link',{name:'Public page',exact:true}).waitFor();
+ await page.getByText('Revision 1',{exact:true}).waitFor();
+ // Keyboard: open the archive confirmation, then Escape cancels without changing anything.
+ await page.getByRole('button',{name:'Archive',exact:true}).focus();await page.keyboard.press('Enter');
+ await page.getByRole('dialog').waitFor();await page.keyboard.press('Escape');
+ await page.getByRole('dialog').waitFor({state:'hidden'});
+ assert.equal(await page.getByRole('button',{name:'Archive',exact:true}).evaluate(el=>el===document.activeElement),true,'focus returns to the opener');
+ await noOverflow();
+ await page.screenshot({path:'output/playwright/d4-review-detail-desktop.png',fullPage:true});
+ await page.setViewportSize({width:375,height:900});await page.screenshot({path:'output/playwright/d4-review-detail-mobile.png',fullPage:true});await page.setViewportSize({width:1440,height:1000});
+ assert.equal((await page.request.get(base+'/boots/qa-review-draft')).status(),200);
+ // Archive through the UI: removes it from public pages while keeping its URL identity and history.
+ dialog=await decide('Archive','Archive','Synthetic browser QA archive; restores catalogue fixtures.');
+ await dialog.getByRole('button',{name:'Archive',exact:true}).click();
+ await page.getByText('Archive: saved and recorded in history.',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'Resubmit for review',exact:true}).waitFor();
+ assert.equal((await page.request.get(base+'/boots/qa-review-draft')).status(),404);
+ return 'PASS: queue filters/bulk preview, blocked identity, submit, attested approval, public visibility, revision, keyboard dialog, archive, 320/768/1024/1440 layouts';
+}

@@ -1,4 +1,5 @@
 import 'server-only';
+import { recordRevision } from '@/lib/product-review/facts';
 import {legacyObservations} from '@/lib/product-data/legacy';
 import { z } from 'zod';
 import { Prisma } from '@/generated/prisma/client';
@@ -180,6 +181,7 @@ export async function updateAssetPresentation(actor: Principal | null, id: strin
             await tx.productImage.updateMany({ where: { entryId: image.entryId, isPrimary: true, id: { not: id } }, data: { isPrimary: false, version: { increment: 1 } } });
         const result = await tx.productImage.update({ where: { id }, data: { altText: data.altText, sortOrder: data.sortOrder, isPrimary: data.isPrimary, version: { increment: 1 } } });
         await tx.moderationAction.create({ data: { actorId: user.id, targetKey: `IMAGE_METADATA:${id}`, action: 'ORDER_PRODUCT_IMAGE', note: 'Updated alt text, ordering and primary selection; permission and verification were not changed.' } });
+        await recordRevision(tx, [image.entryId], user.id, 'Image presentation updated (alt text, order or primary image).', null);
         return result;
     });
 }
@@ -193,6 +195,7 @@ export async function updateAssetRights(actor:Principal|null,id:string,raw:unkno
   const rights={licenseStatus:data.licenseStatus,permissionNotes:data.permissionNotes,permissionUrl:data.permissionUrl};
   const updated=await tx.productImage.update({where:{id},data:{...rights,status:'UNVERIFIED',reviewedAt:null,version:{increment:1}}});
   await tx.moderationAction.create({data:{actorId:user.id,targetKey:`IMAGE_METADATA:${id}`,action:'ASSET_RIGHTS',note:data.note,details:{before:{licenseStatus:current.licenseStatus,permissionNotes:current.permissionNotes,permissionUrl:current.permissionUrl,status:current.status,reviewedAt:current.reviewedAt?.toISOString()??null},after:{...rights,status:'UNVERIFIED'}}}});
+  await recordRevision(tx,[image.entryId],user.id,`Image rights updated; public display revoked until re-verified: ${data.note}`,null);
   return updated;
  });
 }

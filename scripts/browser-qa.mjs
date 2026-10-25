@@ -35,6 +35,10 @@ for(let n=0;n<7;n++){
  const spec=n===0?{upper:{status:'verified',value:'Synthetic QA upper material',sourceUrl:'https://example.test/qa-specification',observedAt:'2026-10-17T00:00:00Z'}}:{};
  await db.query(`INSERT INTO "CatalogueEntry"(id,slug,"outsoleVariantId","colorwayId","generationId",sample,published,specifications) VALUES($1,$1,$2,'qa-color','qa-generation',false,true,$3::jsonb)`,['qa-product-'+n,'qa-variant-'+n,JSON.stringify(spec)]);
 }
+// D4 approval fixtures: one reviewable draft and one with an unknown outsole (blocked).
+await db.query(`INSERT INTO "BootColorway"(id,"generationId",name,swatch) VALUES('qa-review-color','qa-generation','Synthetic QA green','#115533')`);
+await db.query(`INSERT INTO "BootVariant"(id,"tierModelId","generationId",surface) VALUES('qa-review-fg','qa-tier-pro','qa-generation','FG'),('qa-review-unknown','qa-tier-pro','qa-generation',NULL)`);
+await db.query(`INSERT INTO "CatalogueEntry"(id,slug,"outsoleVariantId","colorwayId","generationId",sample,published,"sourceId") VALUES('qa-review-draft','qa-review-draft','qa-review-fg','qa-review-color','qa-generation',false,false,'qa-import-source'),('qa-review-blocked','qa-review-blocked','qa-review-unknown','qa-review-color','qa-generation',false,false,'qa-import-source')`);
 // Synthetic cohorts live only in this randomly named disposable browser QA database.
 await db.query('UPDATE "CatalogueEntry" SET sample=false WHERE "outsoleVariantId"=$1',['mercurial-elite-ag']);
 for(let n=0;n<10;n++){

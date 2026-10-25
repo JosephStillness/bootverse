@@ -141,7 +141,8 @@ export async function productEnrichmentTests(t: TestContext, { db, base, alice, 
             const html = await (await fetch(base + '/boots/d3-entry-1')).text();
             assert.ok(!html.includes('Synthetic contradiction'));
             assert.ok(!html.includes('synthetic-doc-1'));
-            assert.match(html, /No additional unambiguous/);
+            // D4 post-publication policy: a CONFLICTED incoming observation no longer hides the verified value.
+            assert.match(html, /Synthetic upper/);
             await db.query(`UPDATE "CatalogueEntry" SET published=false WHERE id='d3-entry-1'`);
         });
         if (storage)
