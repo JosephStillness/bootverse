@@ -2271,7 +2271,7 @@
 .review-outcomes ul { list-style:disc; padding-left:1.25rem; color:var(--muted-foreground); font-size:.85rem; }
 .review-table-wrap { overflow-x:auto; }
 .review-table { width:100%; border-collapse:collapse; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); }
-.review-table th,.review-table td { padding:.85rem 1rem; text-align:left; vertical-align:top; border-top:1px solid var(--border); overflow-wrap:anywhere; }
+.review-table th,.review-table td { padding:.85rem 1rem; text-align:left; vertical-align:top; border-top:1px solid var(--border); overflow-wrap:break-word; }
 .review-table thead th { font-size:.8rem; font-weight:500; color:var(--muted-foreground); border-top:0; }
 .review-table input[type=checkbox],.review-check input { width:1.25rem; height:1.25rem; accent-color:var(--primary); }
 .review-table tr[data-changed="true"] th { font-weight:600; }
@@ -2336,3 +2336,10 @@
   .review-severity { justify-self:start; }
   .review-bulk .account-actions,.review-head .account-actions { flex-wrap:wrap; }
 }
+
+/* D5 data sources */
+.review-stat-link { display:flex; flex-direction:column; align-items:flex-start; gap:.25rem; width:100%; min-height:5rem; padding:.9rem 1rem; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); }
+.review-stat-link:hover { border-color:var(--primary); }
+.review-stat-link:focus-visible { outline:2px solid var(--primary); outline-offset:2px; }
+.review-stat-link span { font-size:.8rem; color:var(--muted-foreground); }
+.review-stat-link strong { font-size:1.5rem; font-weight:600; }

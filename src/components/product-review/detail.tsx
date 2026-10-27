@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog, IssueList, ReadinessBadge, ReasonField, StatusBadge, date, newRequestId, safeHref, send, words, type Issue, type Readiness } from './shared';
-import { ConflictsPanel, DuplicatesPanel, ImagesPanel, PreviewPanel, SpecificationsPanel, type ReviewData } from './evidence';
+import { ConflictsPanel, DuplicatesPanel, ImagesPanel, PreviewPanel, SpecificationsPanel, SyncChangesPanel, type ReviewData } from './evidence';
 
 type Action = 'SUBMIT' | 'APPROVE' | 'REJECT' | 'RETURN' | 'REOPEN' | 'ARCHIVE' | 'RESUBMIT';
 // Mirrors the server lifecycle for display only; the server enforces every transition.
@@ -90,6 +90,7 @@ export function ReviewDetail({ id }: { id: string }) {
         <SpecificationsPanel data={data} />
         <ConflictsPanel data={data} onDone={reload} />
         <DuplicatesPanel data={data} onDone={reload} />
+        <SyncChangesPanel data={data} onDone={reload} />
         <ImagesPanel data={data} />
         <PreviewPanel data={data} />
       </div>

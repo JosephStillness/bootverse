@@ -74,7 +74,8 @@ export async function previewEnrichment(actor: Principal | null, raw: unknown) {
     const user = importAdmin(actor), input = enrichmentRequest.parse(raw);
     return getDb().$transaction(async (tx) => { await tx.$executeRaw `SET TRANSACTION READ ONLY`; importAdmin(await tx.user.findUnique({ where: { id: user.id }, select: { id: true, role: true, status: true, emailVerified: true } })); const { plan } = await prepare(tx, input, user.id); return { ...plan, ticket: plan.ready ? signPreview(user.id, hash(input), plan.hash, process.env.AUTH_SECRET ?? '') : null }; }, { isolationLevel: 'RepeatableRead', timeout: 30000 });
 }
-async function persist(tx: Tx, plan: EnrichmentPlan, batchId: string) {
+// Also used by D5 source sync so evidence persistence has one implementation.
+export async function persist(tx: Tx, plan: EnrichmentPlan, batchId: string) {
     const rows: Prisma.ProductImportRowCreateManyInput[] = [], claims: Prisma.ProductClaimCreateManyInput[] = [], images: Prisma.ProductImageCreateManyInput[] = [];
     for (const row of plan.rows) {
         const id = crypto.randomUUID();

@@ -20,6 +20,10 @@ import {productDataTests} from "./product-data.integration";
 import {productEnrichmentTests} from "./product-enrichment.integration";
 import {productImportTests} from "./product-import.integration";
 import {productReviewTests} from "./product-review.integration";
+import {sourceSyncTests} from "./source-sync.integration";
+import {mkdtemp,rm} from "node:fs/promises";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
 import {databaseVerificationTests} from "./database-verification.integration";
 import { communityTests } from "./community.integration";
 import { platformTests } from "./platform.integration";
@@ -113,6 +117,8 @@ test(
     await db.connect();
     databaseConnected = true;
     await productMigrationTests(t, source.href);
+    const syncFixtureDir = await mkdtemp(join(tmpdir(), "bootverse-sync-fixtures-"));
+    t.after(() => rm(syncFixtureDir, { recursive: true, force: true }));
     const port = await unusedPort(),
       smtpPort = await unusedPort(),
       base = `http://localhost:${port}`;
@@ -126,6 +132,10 @@ test(
       EMAIL_FROM: "BootVerse <noreply@bootverse.local>",
       NODE_ENV: "production",
       BOOT_FIT_TIMING_LOGS: process.env.BOOTVERSE_BENCHMARK === "1" ? "1" : "0",
+      // D5: synthetic fixture adapters and a throwaway scheduler secret exist only for this disposable run.
+      SYNC_FIXTURES_ENABLED: "1",
+      SYNC_FIXTURE_DIR: syncFixtureDir,
+      SYNC_SCHEDULER_SECRET: randomBytes(32).toString("hex"),
     };
     if(process.env.BOOTVERSE_TEST_STORAGE === "1") {
       assert.ok(env.S3_ENDPOINT && ["localhost","127.0.0.1"].includes(new URL(env.S3_ENDPOINT).hostname), "Platform tests require local S3 storage.");
@@ -561,6 +571,10 @@ test(
       for(const [browser,email] of [[reviewAdmin,"review-admin@example.test"],[reviewSecond,"review-second@example.test"],[reviewMember,"review-member@example.test"]] as const){assert.equal((await browser.requestLink(email)).status,200);await browser.verifyLastLink();}
       const reviewSecondId=(await reviewSecond.session()).user.id;await db.query(`UPDATE "User" SET role='ADMIN' WHERE id=$1`,[reviewSecondId]);
       await productReviewTests(t,{db,base,admin:reviewAdmin,second:reviewSecond,member:reviewMember,memberId:(await reviewMember.session()).user.id,adminId:(await reviewAdmin.session()).user.id});
+      const syncAdmins=[new Browser(),new Browser(),new Browser()],syncMember=new Browser();
+      for(const [n,browser] of syncAdmins.entries()){assert.equal((await browser.requestLink(`sync-admin-${n}@example.test`)).status,200);await browser.verifyLastLink();await db.query(`UPDATE "User" SET role='ADMIN' WHERE id=$1`,[(await browser.session()).user.id]);}
+      assert.equal((await syncMember.requestLink("sync-member@example.test")).status,200);await syncMember.verifyLastLink();
+      await sourceSyncTests(t,{db,base,admins:syncAdmins,member:syncMember,adminId:(await syncAdmins[0].session()).user.id,fixtureDir:syncFixtureDir,schedulerSecret:env.SYNC_SCHEDULER_SECRET!,env});
       await t.test(
         "expired sessions and concurrent unique-username updates",
         async () => {

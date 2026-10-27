@@ -27,7 +27,10 @@
     "test:platform:local": "tsx scripts/local.mts test",
     "test:browser": "tsx scripts/browser-regressions.mts",
     "test:browser:serve": "node scripts/browser-qa.mjs",
-    "db:verify": "tsx scripts/verify-database.mts"
+    "db:verify": "tsx scripts/verify-database.mts",
+    "sync:due": "node --conditions=react-server --import tsx scripts/sync-sources.mts due",
+    "sync:sweep": "node --conditions=react-server --import tsx scripts/sync-sources.mts sweep",
+    "sync:run": "node --conditions=react-server --import tsx scripts/sync-sources.mts run"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

@@ -9,7 +9,12 @@ import { compareClaims, isExplicitUnknown } from "@/lib/product-data/comparison"
 import { stableJson } from "@/lib/data-import/preview";
 import { actionForStatus, conflictGroups, evaluateProduct, imageRights, lifecycleTarget, publicImageEligible, reviewFingerprint, type LifecycleAction } from "./rules";
 import { loadFacts, publicSnapshot, recordRevision } from "./facts";
-import { bulkSchema, conflictSchema, duplicateSchema, legacyPublicationSchema, noteSchema, reviewQuery, reviewTransitionSchema, transitionSchema, type TransitionInput } from "./contracts";
+import { bulkSchema, conflictSchema, duplicateSchema, legacyPublicationSchema, noteSchema, reviewQuery, reviewTransitionSchema, syncChangeSchema, transitionSchema, type TransitionInput } from "./contracts";
+
+/** D5: a decision on the product's lifecycle or evidence closes the source-sync items it answers. */
+export async function resolveSyncChanges(tx: Tx, where: Prisma.SourceSyncChangeWhereInput, actorId: string) {
+  return tx.sourceSyncChange.updateMany({ where: { ...where, disposition: "PENDING_REVIEW" }, data: { disposition: "RESOLVED", resolvedById: actorId, resolvedAt: new Date() } });
+}
 
 const digest = (value: unknown) => createHash("sha256").update(stableJson(value)).digest("hex");
 // Request keys are scoped to the actor and product so a reused client ID cannot touch another record.
@@ -59,6 +64,7 @@ async function applyTransition(tx: Tx, user: Principal, id: string, input: Trans
   } });
   await audit(tx, user, `PRODUCT:${id}`, "PRODUCT_STATUS", `${entry.status} → ${target}: ${input.reason}`.slice(0, 1000));
   if (target === "PUBLISHED") await recordRevision(tx, [id], user.id, input.reason, decision.id, true);
+  if (target === "PUBLISHED" || target === "REJECTED") await resolveSyncChanges(tx, { entryId: id, kind: { in: ["NEW_PRODUCT", "POSSIBLE_DUPLICATE"] } }, user.id);
   return { replayed: false, entry: updated, decisionId: decision.id, publicChanged: target === "PUBLISHED" || entry.status === "PUBLISHED" };
 }
 
@@ -156,6 +162,8 @@ export async function resolveConflict(actor: Principal | null, id: string, raw: 
       details: { attribute: input.attribute, action: input.action, previous: before.filter(b => b.status === "VERIFIED").map(b => ({ id: b.id, value: b.value })), selected: selected ? { id: selected.id, value: selected.value, sourceId: selected.sourceId, sourceUrl: selected.sourceUrl, sourceType: selected.source.type, basis: selected.basis } : null, changes, observations: before } as Prisma.InputJsonValue,
     } });
     await audit(tx, user, `PRODUCT:${id}`, "RESOLVE_CONFLICT", `${input.attribute}: ${input.action}`);
+    const decided = changes.filter(c => c.to === "VERIFIED" || c.to === "REJECTED").map(c => c.id);
+    if (decided.length) await resolveSyncChanges(tx, { claimId: { in: decided } }, user.id);
     const affected = [id, ...(variantTouched ? (await tx.catalogueEntry.findMany({ where: { outsoleVariantId: entry.outsoleVariantId, status: "PUBLISHED" }, select: { id: true }, take: 100 })).map(e => e.id) : [])];
     const revised = await recordRevision(tx, affected, user.id, `Evidence change (${input.attribute}): ${input.reason}`, decision.id);
     return { replayed: false, decisionId: decision.id, changes, slug: entry.slug, publicChanged: revised.length > 0 };
@@ -203,12 +211,13 @@ export async function reviewDetail(actor: Principal | null, id: string) {
   return adminTx(actor, async tx => {
     const current = await factsFor(tx, dataId.parse(id));
     const { entry, facts, evaluation } = current;
-    const [history, revisions, staged, sources, preview] = await Promise.all([
+    const [history, revisions, staged, sources, preview, syncChanges] = await Promise.all([
       tx.productReviewDecision.findMany({ where: { entryId: id }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 50, select: { id: true, kind: true, fromStatus: true, toStatus: true, reason: true, details: true, createdAt: true, actor: { select: { id: true, name: true, email: true } } } }),
       tx.productRevision.findMany({ where: { entryId: id }, orderBy: { revision: "desc" }, take: 20, select: { id: true, revision: true, snapshot: true, snapshotHash: true, reason: true, createdAt: true, actor: { select: { name: true, email: true } } } }),
       tx.productImportRow.findMany({ where: { entryId: id, action: { in: ["STAGE", "QUARANTINE"] } }, orderBy: { createdAt: "desc" }, take: 20, select: { id: true, outcome: true, action: true, diagnostics: true, sourceUrl: true, observedAt: true, createdAt: true, batch: { select: { id: true, source: { select: { name: true } } } } } }),
       tx.productSource.findMany({ where: { status: "ACTIVE", authorizationStatus: { not: "DENIED" } }, select: { id: true, name: true, type: true }, orderBy: { name: "asc" }, take: 100 }),
       publicSnapshot(tx, id),
+      tx.sourceSyncChange.findMany({ where: { entryId: id }, orderBy: [{ disposition: "desc" }, { lastSeenAt: "desc" }], take: 50, select: { id: true, kind: true, severity: true, disposition: true, attribute: true, previousValue: true, proposedValue: true, claimId: true, jobId: true, lastSeenAt: true, createdAt: true, resolvedAt: true, source: { select: { id: true, name: true, type: true } } } }),
     ]);
     const candidateIds = facts.duplicates.map(d => d.candidateId);
     const candidates = candidateIds.length ? await tx.catalogueEntry.findMany({ where: { id: { in: candidateIds } }, select: { id: true, slug: true, status: true, variant: { select: { surface: true, tier: { select: { name: true, generation: { select: { name: true } } } } } }, colorway: { select: { name: true } }, _count: { select: { posts: true } } } }) : [];
@@ -227,6 +236,7 @@ export async function reviewDetail(actor: Principal | null, id: string) {
       duplicateDecision: facts.duplicateDecision, staged,
       published: revisions[0] ?? null, preview: preview.snapshot, previewChanged: revisions[0] ? revisions[0].snapshotHash !== preview.hash : null,
       proposed: pending.map(c => ({ id: c.id, attribute: c.attribute, value: c.value, status: c.status, sourceName: c.source.name, sourceType: c.source.type, sourceUrl: c.sourceUrl })),
+      syncChanges,
       history: history.map(h => ({ ...h, actor: h.actor ? { id: h.actor.id, name: h.actor.name ?? h.actor.email } : null })), revisions: revisions.map(r => ({ ...r, actor: r.actor ? r.actor.name ?? r.actor.email : null })), sources,
     };
   });
@@ -244,6 +254,7 @@ export async function listReviewQueue(actor: Principal | null, raw: unknown) {
       missing_image: { productImages: { none: { status: "VERIFIED", licenseStatus: "GRANTED" } } },
       missing_sku: { identifiers: { none: {} } }, unknown_outsole: { variant: { surface: null } },
       staged_proposals: { importRows: { some: { action: { in: ["STAGE", "QUARANTINE"] } } } },
+      sync_changes: { syncChanges: { some: { disposition: "PENDING_REVIEW", kind: { not: "NEW_PRODUCT" } } } },
     };
     const where: Prisma.CatalogueEntryWhereInput = { AND: [q.status ? { status: q.status } : {}, q.sourceId ? { sourceId: q.sourceId } : {}, q.q ? searchable(q.q) : {}, q.quality ? quality[q.quality] : {}] };
     const orderBy: Prisma.CatalogueEntryOrderByWithRelationInput[] = q.sort === "submitted_asc" ? [{ submittedAt: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }, { id: "asc" }] : q.sort === "created_desc" ? [{ createdAt: "desc" }, { id: "asc" }] : q.sort === "updated_desc" ? [{ updatedAt: "desc" }, { id: "asc" }] : [{ submittedAt: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }, { id: "asc" }];
@@ -269,7 +280,7 @@ export async function listReviewQueue(actor: Principal | null, raw: unknown) {
 
 export async function reviewDashboard(actor: Principal | null) {
   return adminTx(actor, async tx => {
-    const [byStatus, conflicts, duplicates, missingImages, staged, sources] = await Promise.all([
+    const [byStatus, conflicts, duplicates, missingImages, staged, sources, pendingSourceChanges] = await Promise.all([
       tx.catalogueEntry.groupBy({ by: ["status"], _count: { _all: true } }),
       tx.$queryRaw<{ n: number }[]>`SELECT count(DISTINCT e.id)::int AS n FROM "CatalogueEntry" e WHERE e.status<>'REJECTED' AND EXISTS (SELECT 1 FROM "ProductClaim" c WHERE c.status='CONFLICTED' AND (c."entryId"=e.id OR c."variantId"=e."outsoleVariantId"))`,
       tx.$queryRaw<{ n: number }[]>`
@@ -280,9 +291,10 @@ export async function reviewDashboard(actor: Principal | null) {
       tx.catalogueEntry.count({ where: { status: { not: "REJECTED" }, productImages: { none: { status: "VERIFIED", licenseStatus: "GRANTED" } } } }),
       tx.productImportRow.count({ where: { action: { in: ["STAGE", "QUARANTINE"] }, outcome: { in: ["POSSIBLE_MATCH", "CONFLICT"] } } }),
       tx.productSource.findMany({ where: { entries: { some: {} } }, select: { id: true, name: true }, orderBy: { name: "asc" }, take: 100 }),
+      tx.catalogueEntry.count({ where: { syncChanges: { some: { disposition: "PENDING_REVIEW", kind: { not: "NEW_PRODUCT" } } } } }),
     ]);
     const statuses = Object.fromEntries(["DRAFT", "PENDING_REVIEW", "PUBLISHED", "REJECTED", "ARCHIVED"].map(s => [s, byStatus.find(r => r.status === s)?._count._all ?? 0]));
-    return { statuses, unresolvedConflicts: conflicts[0]?.n ?? 0, possibleDuplicates: duplicates[0]?.n ?? 0, missingAuthorizedImages: missingImages, stagedImportMatches: staged, sources };
+    return { statuses, unresolvedConflicts: conflicts[0]?.n ?? 0, possibleDuplicates: duplicates[0]?.n ?? 0, missingAuthorizedImages: missingImages, stagedImportMatches: staged, pendingSourceChanges, sources };
   });
 }
 
@@ -316,4 +328,26 @@ export async function bulkReview(actor: Principal | null, raw: unknown) {
   }
   const counts = results.reduce<Record<string, number>>((n, r) => ({ ...n, [r.outcome]: (n[r.outcome] ?? 0) + 1 }), {});
   return { action: input.action, results, counts };
+}
+
+/** D5: acknowledge (accepted as informational / handled elsewhere) or dismiss a source-sync change. Dismissed changes are never re-raised. */
+export async function resolveSyncChange(actor: Principal | null, id: string, raw: unknown) {
+  const input = syncChangeSchema.parse(raw);
+  return adminTx(actor, async (tx, user) => {
+    await lockProduct(tx, dataId.parse(id));
+    const key = requestKey(user.id, input.requestId, `sync:${id}`), hash = digest({ id, ...input });
+    const replayed = await replay(tx, key, hash);
+    if (replayed) return { replayed: true, decisionId: replayed.id };
+    const entry = await tx.catalogueEntry.findUniqueOrThrow({ where: { id }, select: { version: true } });
+    if (entry.version !== input.version) throw new CommunityError(409, "This product changed. Reload before deciding.");
+    const change = await tx.sourceSyncChange.findFirst({ where: { id: input.changeId, entryId: id } });
+    if (!change) throw new CommunityError(404, "That source change does not belong to this product.");
+    if (change.disposition !== "PENDING_REVIEW") throw new CommunityError(409, "This source change was already decided.");
+    const disposition = input.action === "ACKNOWLEDGE" ? "ACKNOWLEDGED" : "DISMISSED";
+    await tx.sourceSyncChange.update({ where: { id: change.id }, data: { disposition, resolvedById: user.id, resolvedAt: new Date() } });
+    const decision = await tx.productReviewDecision.create({ data: { entryId: id, entryKey: id, actorId: user.id, kind: "SYNC_CHANGE", reason: input.reason, entryVersion: entry.version, requestKey: key, requestHash: key ? hash : null,
+      details: { changeId: change.id, action: input.action, kind: change.kind, severity: change.severity, attribute: change.attribute, previousValue: change.previousValue, proposedValue: change.proposedValue, sourceId: change.sourceId, jobId: change.jobId } as Prisma.InputJsonValue } });
+    await audit(tx, user, `PRODUCT:${id}`, "SYNC_CHANGE", `${input.action} ${change.kind}: ${input.reason}`.slice(0, 1000));
+    return { replayed: false, decisionId: decision.id, disposition };
+  });
 }

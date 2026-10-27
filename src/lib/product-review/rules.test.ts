@@ -157,3 +157,15 @@ describe("D4 rejected duplicate candidates", () => {
     expect(r.issues.map(i => i.code)).toContain("rejected_similar_product");
   });
 });
+
+describe("D5 source-sync changes in D4 readiness", () => {
+  it("blocks approval on a critical pending source change and warns on a material one", () => {
+    expect(codes(facts({ syncChanges: [{ id: "s1", kind: "SKU_CHANGE", severity: "CRITICAL" }] }))).toContain("BLOCKING_ERROR:source_change_critical");
+    expect(evaluateProduct(facts({ syncChanges: [{ id: "s1", kind: "IDENTITY_CONFLICT", severity: "CRITICAL" }] })).readiness).toBe("NEEDS_CORRECTION");
+    expect(codes(facts({ syncChanges: [{ id: "s2", kind: "IMAGE_ADDED", severity: "MATERIAL" }] }))).toContain("WARNING:source_change_pending");
+    expect(evaluateProduct(facts({ syncChanges: [{ id: "s3", kind: "SPEC_CORROBORATION", severity: "ROUTINE" }] })).counts.warnings).toBe(evaluateProduct(facts()).counts.warnings);
+  });
+  it("makes a review stale when a new source change arrives", () => {
+    expect(reviewFingerprint(facts())).not.toBe(reviewFingerprint(facts({ syncChanges: [{ id: "s1", kind: "SKU_CHANGE", severity: "CRITICAL" }] })));
+  });
+});

@@ -186,6 +186,8 @@ export async function decideRecord(actor: Principal | null, kind: "claim" | "ima
     // D4 revision history: record when this decision changes what a published page shows.
     const affected = entryId ? [entryId] : (await tx.catalogueEntry.findMany({ where: { outsoleVariantId: variantId!, status: "PUBLISHED" }, select: { id: true }, take: 100 })).map(e => e.id);
     await recordRevision(tx, affected, user.id, `Evidence decision ${current.status} → ${data.status}: ${data.note}`, null);
+    // D5: a verify/reject decision answers the source-sync change that proposed this observation.
+    if (kind === "claim" && (data.status === "VERIFIED" || data.status === "REJECTED")) await tx.sourceSyncChange.updateMany({ where: { claimId: id, disposition: "PENDING_REVIEW" }, data: { disposition: "RESOLVED", resolvedById: user.id, resolvedAt: new Date() } });
     return result;
   });
 }

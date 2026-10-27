@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog, ReadinessBadge, ReasonField, StatusBadge, date, newRequestId, send, words, type Readiness } from './shared';
 
-type Summary = { statuses: Record<string, number>; unresolvedConflicts: number; possibleDuplicates: number; missingAuthorizedImages: number; stagedImportMatches: number; sources: { id: string; name: string }[] };
+type Summary = { statuses: Record<string, number>; unresolvedConflicts: number; possibleDuplicates: number; missingAuthorizedImages: number; stagedImportMatches: number; pendingSourceChanges: number; sources: { id: string; name: string }[] };
 type Row = {
   id: string; slug: string; status: string; version: number; sample: boolean; submittedAt: string | null; createdAt: string; fingerprint: string;
   identity: { brand?: string; family?: string; generation?: string; tier?: string; outsole: string | null; colorway?: string; sku: string[] };
@@ -20,8 +20,11 @@ const initial: Filters = { q: '', status: 'PENDING_REVIEW', sourceId: '', qualit
 const statusOrder = ['DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'REJECTED', 'ARCHIVED'];
 const imageText = { AUTHORIZED: 'Authorized image', PENDING_OR_DENIED: 'Image not authorized', NONE: 'No image · placeholder' };
 
-export function ReviewQueue() {
-  const [filters, setFilters] = useState<Filters>(initial), [draft, setDraft] = useState(initial.q);
+const qualities = ['conflicts', 'missing_image', 'missing_sku', 'unknown_outsole', 'staged_proposals', 'sync_changes'];
+export function ReviewQueue({ quality }: { quality?: string }) {
+  // A deep link (e.g. from the data-sources page) may preselect one supported quality filter.
+  const start: Filters = quality && qualities.includes(quality) ? { ...initial, status: '', quality } : initial;
+  const [filters, setFilters] = useState<Filters>(start), [draft, setDraft] = useState(start.q);
   const [queue, setQueue] = useState<Queue>(), [summary, setSummary] = useState<Summary>(), [loading, setLoading] = useState(true), [error, setError] = useState(''), [refresh, setRefresh] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set()), [preview, setPreview] = useState<PreviewResult[]>(), [result, setResult] = useState<BulkResult>();
   const [dialog, setDialog] = useState<'' | 'APPROVE' | 'REJECT'>(''), [reason, setReason] = useState(''), [attest, setAttest] = useState(false), [busy, setBusy] = useState(false), [bulkError, setBulkError] = useState(''), [requestId, setRequestId] = useState('');
@@ -68,6 +71,7 @@ export function ReviewQueue() {
         <li><div><span>Possible duplicate identities</span><strong>{summary.possibleDuplicates}</strong></div></li>
         <li><button type="button" aria-pressed={filters.quality === 'missing_image'} onClick={() => apply({ status: '', quality: 'missing_image' })}><span>Missing authorized image</span><strong>{summary.missingAuthorizedImages}</strong></button></li>
         <li><button type="button" aria-pressed={filters.quality === 'staged_proposals'} onClick={() => apply({ status: '', quality: 'staged_proposals' })}><span>Staged import matches</span><strong>{summary.stagedImportMatches}</strong></button></li>
+        <li><button type="button" aria-pressed={filters.quality === 'sync_changes'} onClick={() => apply({ status: '', quality: 'sync_changes' })}><span>Pending source changes</span><strong>{summary.pendingSourceChanges}</strong></button></li>
       </ul> : <div className="review-stats-skeleton skeleton" aria-hidden="true" />}
       <p className="import-note">Counts are live database totals. “Possible duplicate identities” counts non-rejected records sharing a full normalized identity before administrator confirmation.</p>
     </section>
@@ -76,7 +80,7 @@ export function ReviewQueue() {
       <label>Search brand, model, colorway, SKU or slug<input type="search" value={draft} maxLength={100} onChange={e => setDraft(e.target.value)} /></label>
       <label>Status<select value={filters.status} onChange={e => apply({ status: e.target.value })}><option value="">All statuses</option>{statusOrder.map(s => <option key={s} value={s}>{words(s)}</option>)}</select></label>
       <label>Source<select value={filters.sourceId} onChange={e => apply({ sourceId: e.target.value })}><option value="">All sources</option>{summary?.sources.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-      <label>Data quality<select value={filters.quality} onChange={e => apply({ quality: e.target.value })}><option value="">Any</option><option value="conflicts">Unresolved conflicts</option><option value="missing_image">No authorized image</option><option value="missing_sku">No SKU</option><option value="unknown_outsole">Unknown outsole</option><option value="staged_proposals">Staged import proposals</option></select></label>
+      <label>Data quality<select value={filters.quality} onChange={e => apply({ quality: e.target.value })}><option value="">Any</option><option value="conflicts">Unresolved conflicts</option><option value="missing_image">No authorized image</option><option value="missing_sku">No SKU</option><option value="unknown_outsole">Unknown outsole</option><option value="staged_proposals">Staged import proposals</option><option value="sync_changes">Pending source changes</option></select></label>
       <label>Sort<select value={filters.sort} onChange={e => apply({ sort: e.target.value })}><option value="submitted_desc">Newest submission</option><option value="submitted_asc">Oldest submission</option><option value="created_desc">Newest created</option><option value="updated_desc">Recently updated</option></select></label>
       <Button type="submit" variant="outline">Search</Button>
     </form>

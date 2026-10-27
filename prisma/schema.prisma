@@ -47,6 +47,9 @@ model User {
   productImports ProductImportBatch[]
   productReviewDecisions ProductReviewDecision[]
   productRevisions ProductRevision[]
+  syncJobs SourceSyncJob[]
+  resolvedSyncChanges SourceSyncChange[]
+  acknowledgedAlerts SourceAlert[]
 }
 
 model UserProfile {
@@ -148,6 +151,7 @@ model BootVariant {
   reviews      BootReview[]
   recommendationEvidence RecommendationEvidence[]
   claims ProductClaim[]
+  retailOffers ProductOffer[]
 
   @@unique([id, generationId])
   @@index([tierModelId])
@@ -195,6 +199,8 @@ model CatalogueEntry {
   submittedAt DateTime? @db.Timestamptz(3)
   reviewDecisions ProductReviewDecision[]
   revisions ProductRevision[]
+  syncChanges SourceSyncChange[]
+  retailOffers ProductOffer[]
 
   @@unique([outsoleVariantId, colorwayId])
   @@unique([id, outsoleVariantId])
@@ -610,6 +616,7 @@ model RecommendationEvidence {
   countryCode String? @db.VarChar(2)
   importRowId String?
   importRow ProductImportRow? @relation(fields: [importRowId], references: [id], onDelete: SetNull)
+  offerObservation ProductOfferObservation?
 
   @@index([variantId, approved, observedAt])
   @@index([sourceId])
@@ -670,10 +677,27 @@ model ProductSource {
   offers RecommendationEvidence[]
   imports ProductImportBatch[]
   sourceRecords ProductSourceRecord[]
+  // D5 scheduling. Credentials are never stored here; adapterKey names a server-side adapter.
+  syncEnabled Boolean @default(false)
+  adapterKey String? @db.VarChar(80)
+  syncIntervalMinutes Int?
+  minIntervalMinutes Int @default(60)
+  fieldPolicy Json @default("{}")
+  lastSyncAttemptAt DateTime? @db.Timestamptz(3)
+  lastSyncSuccessAt DateTime? @db.Timestamptz(3)
+  nextSyncAt DateTime? @db.Timestamptz(3)
+  syncFailureCount Int @default(0)
+  backoffUntil DateTime? @db.Timestamptz(3)
+  lastSyncErrorCategory String? @db.VarChar(30)
+  syncJobs SourceSyncJob[]
+  syncChanges SourceSyncChange[]
+  retailOffers ProductOffer[]
+  alerts SourceAlert[]
 
   @@index([status, type, id])
   @@index([brandId])
   @@index([checkedById])
+  @@index([syncEnabled, nextSyncAt])
 }
 
 // Case-preserving manufacturer identifier; UNSPECIFIED is distinct from GLOBAL.
@@ -783,6 +807,7 @@ model ProductImportBatch {
  completedAt DateTime? @db.Timestamptz(3)
  rows ProductImportRow[]
  sourceRecords ProductSourceRecord[]
+ syncJobs SourceSyncJob[]
 
  @@unique([sourceId,idempotencyKey])
  @@unique([sourceId,id])
@@ -883,4 +908,172 @@ model ProductRevision {
   @@unique([entryId, revision])
   @@index([decisionId])
   @@index([actorId])
+}
+
+enum OfferAvailability {
+  IN_STOCK
+  OUT_OF_STOCK
+  PREORDER
+  DISCONTINUED
+  UNKNOWN
+}
+
+// D5: one synchronization attempt. At most one RUNNING job per source (partial unique index in SQL).
+model SourceSyncJob {
+  id String @id @default(cuid())
+  sourceId String
+  source ProductSource @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  trigger String @db.VarChar(16)
+  entryPoint String @db.VarChar(20)
+  mode String @default("RUN") @db.VarChar(8)
+  actorId String?
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  idempotencyKey String @db.VarChar(120)
+  status String @default("RUNNING") @db.VarChar(12)
+  leaseOwner String @db.VarChar(100)
+  leaseExpiresAt DateTime @db.Timestamptz(3)
+  heartbeatAt DateTime @default(now()) @db.Timestamptz(3)
+  startedAt DateTime @default(now()) @db.Timestamptz(3)
+  completedAt DateTime? @db.Timestamptz(3)
+  durationMs Int?
+  summary Json @default("{}")
+  errorCategory String? @db.VarChar(30)
+  errorDetail String? @db.VarChar(300)
+  batchId String?
+  batch ProductImportBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  changes SourceSyncChange[] @relation("ChangeFirstJob")
+  observations ProductOfferObservation[]
+  alerts SourceAlert[]
+
+  @@unique([sourceId, idempotencyKey])
+  @@index([sourceId, startedAt, id])
+  @@index([status, leaseExpiresAt])
+  @@index([actorId])
+  @@index([batchId])
+}
+
+// D5: a detected catalogue/evidence change. Human approval stays in the D4 workflow.
+model SourceSyncChange {
+  id String @id @default(cuid())
+  jobId String
+  job SourceSyncJob @relation("ChangeFirstJob", fields: [jobId], references: [id], onDelete: Restrict)
+  lastSeenJobId String @db.VarChar(40)
+  sourceId String
+  source ProductSource @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  entryId String?
+  entry CatalogueEntry? @relation(fields: [entryId], references: [id], onDelete: SetNull)
+  recordId String @db.VarChar(120)
+  outcome String @db.VarChar(30)
+  kind String @db.VarChar(30)
+  severity String @db.VarChar(10)
+  attribute String? @db.VarChar(40)
+  previousValue Json?
+  proposedValue Json?
+  claimId String? @db.VarChar(40)
+  disposition String @db.VarChar(16)
+  changeKey String @unique @db.VarChar(64)
+  resolvedById String?
+  resolvedBy User? @relation(fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolvedAt DateTime? @db.Timestamptz(3)
+  lastSeenAt DateTime @default(now()) @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([entryId, disposition])
+  @@index([jobId])
+  @@index([sourceId, createdAt])
+  @@index([resolvedById])
+}
+
+// D5: current state of one retailer listing for an exact variant and country.
+model ProductOffer {
+  id String @id @default(cuid())
+  sourceId String
+  source ProductSource @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  listingKey String @db.VarChar(160)
+  recordId String @db.VarChar(120)
+  entryId String
+  variantId String
+  entry CatalogueEntry @relation(fields: [entryId, variantId], references: [id, outsoleVariantId], onDelete: Cascade, onUpdate: Restrict)
+  variant BootVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  countryCode String @db.VarChar(2)
+  size String? @db.VarChar(6)
+  sizeSystem String? @db.VarChar(4)
+  currency String? @db.VarChar(3)
+  amount Decimal? @db.Decimal(10, 2)
+  previousAmount Decimal? @db.Decimal(10, 2)
+  previousCurrency String? @db.VarChar(3)
+  availability OfferAvailability @default(UNKNOWN)
+  rawAvailability String? @db.VarChar(60)
+  sourceUrl String @db.VarChar(2000)
+  status String @default("ACTIVE") @db.VarChar(10)
+  firstSeenAt DateTime @db.Timestamptz(3)
+  lastObservedAt DateTime @db.Timestamptz(3)
+  lastChangedAt DateTime @db.Timestamptz(3)
+  missingSince DateTime? @db.Timestamptz(3)
+  priceMissingSince DateTime? @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  observations ProductOfferObservation[]
+
+  @@unique([sourceId, listingKey])
+  @@index([entryId, variantId])
+  @@index([variantId])
+  @@index([sourceId, lastObservedAt])
+}
+
+// D5: append-only history, written only when a listing changes or is refreshed.
+model ProductOfferObservation {
+  id String @id @default(cuid())
+  offerId String
+  offer ProductOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  jobId String?
+  job SourceSyncJob? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  change String @db.VarChar(24)
+  amount Decimal? @db.Decimal(10, 2)
+  currency String? @db.VarChar(3)
+  availability OfferAvailability
+  rawAvailability String? @db.VarChar(60)
+  sourceUrl String @db.VarChar(2000)
+  observedAt DateTime @db.Timestamptz(3)
+  evidenceId String? @unique
+  evidence RecommendationEvidence? @relation(fields: [evidenceId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([offerId, observedAt])
+  @@index([jobId])
+}
+
+// D5: operational alerts. Delivery records what actually happened (no fabricated success).
+model SourceAlert {
+  id String @id @default(cuid())
+  sourceId String?
+  source ProductSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  jobId String?
+  job SourceSyncJob? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  kind String @db.VarChar(30)
+  severity String @db.VarChar(8)
+  message String @db.VarChar(500)
+  dedupeKey String @db.VarChar(160)
+  status String @default("OPEN") @db.VarChar(14)
+  occurrences Int @default(1)
+  delivery String @db.VarChar(16)
+  acknowledgedById String?
+  acknowledgedBy User? @relation(fields: [acknowledgedById], references: [id], onDelete: SetNull)
+  acknowledgedAt DateTime? @db.Timestamptz(3)
+  resolvedAt DateTime? @db.Timestamptz(3)
+  firstSeenAt DateTime @default(now()) @db.Timestamptz(3)
+  lastSeenAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([status, lastSeenAt])
+  @@index([sourceId])
+  @@index([jobId])
+  @@index([acknowledgedById])
+}
+
+// D5: replay protection for the signed internal scheduler endpoint.
+model SchedulerNonce {
+  nonce String @id @db.VarChar(64)
+  receivedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([receivedAt])
 }

@@ -43,6 +43,8 @@ export type ReviewFacts = {
   duplicates: { candidateId: string; slug: string; status: string; relation: DuplicateRelation; skuCaseCollision?: boolean }[];
   duplicateDecision: { outcome: DuplicateOutcome; candidateIds: string[] } | null;
   stagedProposals: number;
+  // D5: open source-sync changes for this product (new-product notices excluded; the lifecycle covers those).
+  syncChanges?: { id: string; kind: string; severity: string }[];
   overflow: boolean;
   now: Date;
 };
@@ -173,6 +175,11 @@ export function evaluateProduct(f: ReviewFacts) {
     else if (d.status === "REJECTED") add("INFORMATION", "DUPLICATES", "rejected_similar_product", `${d.slug} has the same identity but was rejected.`, d.candidateId);
   }
   if (f.stagedProposals) add("WARNING", "DUPLICATES", "pending_source_proposals", `${f.stagedProposals} staged import proposal(s) reference this product and await resolution.`);
+  for (const c of f.syncChanges ?? []) {
+    const dimension: Dimension = c.kind === "IDENTITY_CONFLICT" || c.kind === "POSSIBLE_DUPLICATE" ? "DUPLICATES" : "CONFLICTS";
+    if (c.severity === "CRITICAL") add("BLOCKING_ERROR", dimension, "source_change_critical", `A scheduled source sync reported a critical ${c.kind.toLowerCase().replace(/_/g, " ")} that needs a decision.`, c.id);
+    else if (c.severity === "MATERIAL") add("WARNING", dimension, "source_change_pending", `A scheduled source sync proposed a ${c.kind.toLowerCase().replace(/_/g, " ")}; it is not public until reviewed.`, c.id);
+  }
 
   // Images
   const eligible = f.images.filter(publicImageEligible);
@@ -219,5 +226,6 @@ export function reviewFingerprint(f: ReviewFacts) {
     // A distinct sibling (other tier/outsole/generation) changing status does not make this review stale.
     duplicates: [...f.duplicates].sort((a, b) => a.candidateId.localeCompare(b.candidateId)).map(d => [d.candidateId, d.relation, d.relation === "SAME_IDENTITY" || d.relation === "CASE_ONLY_SKU" ? d.status : null, !!d.skuCaseCollision]),
     duplicateDecision: f.duplicateDecision, stagedProposals: f.stagedProposals, overflow: f.overflow,
+    syncChanges: (f.syncChanges ?? []).map(c => c.id).sort(),
   })).digest("hex");
 }
