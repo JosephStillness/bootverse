@@ -1,7 +1,7 @@
 import "dotenv/config";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { randomBytes } from "node:crypto";
+import { randomBytes,createHmac } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
 import { once } from "node:events";
 import { createServer } from "node:net";
@@ -15,6 +15,11 @@ import { footProfileTests } from "./foot-profile.integration";
 import { reviewsTests } from "./reviews.integration";
 import { interactionsTests } from "./interactions.integration";
 import {catalogueTests} from "./catalogue.integration";
+import {productMigrationTests} from "./product-migration.integration";
+import {productDataTests} from "./product-data.integration";
+import {productEnrichmentTests} from "./product-enrichment.integration";
+import {productImportTests} from "./product-import.integration";
+import {productReviewTests} from "./product-review.integration";
 import {databaseVerificationTests} from "./database-verification.integration";
 import { communityTests } from "./community.integration";
 import { platformTests } from "./platform.integration";
@@ -107,6 +112,7 @@ test(
     created = true;
     await db.connect();
     databaseConnected = true;
+    await productMigrationTests(t, source.href);
     const port = await unusedPort(),
       smtpPort = await unusedPort(),
       base = `http://localhost:${port}`;
@@ -196,7 +202,7 @@ test(
               .map(([key, value]) => `${key}=${value}`)
               .join("; "),
           );
-          if (init.method && init.method !== "GET") headers.set("origin", base);
+          if (init.method && init.method !== "GET" && !headers.has("origin")) headers.set("origin", base);
           const response = await fetch(new URL(path, base), {
             ...init,
             headers,
@@ -543,6 +549,18 @@ test(
       await finderTests(t, { db, base, alice, bob, aliceId, bobId, secret: env.AUTH_SECRET! });
       if(process.env.BOOTVERSE_BENCHMARK === "1") await recommendationPerformanceTests(t,{db,alice,aliceId,secret:env.AUTH_SECRET!});
       if (testStorage) await platformTests(t, { db, base, alice, bob, aliceId, bobId, env });
+      await productDataTests(t, { db, base, alice, bob, aliceId });
+      await productImportTests(t, { db, base, alice, bob, aliceId, bobId });
+      // Each sprint's role/rate-limit fixtures are independent; use real local SMTP sign-in.
+      const enrichmentAdmin=new Browser(),enrichmentMember=new Browser();
+      assert.equal((await enrichmentAdmin.requestLink("enrichment-admin@example.test")).status,200);await enrichmentAdmin.verifyLastLink();
+      assert.equal((await enrichmentMember.requestLink("enrichment-member@example.test")).status,200);await enrichmentMember.verifyLastLink();
+      await productEnrichmentTests(t,{db,base,alice:enrichmentMember,bob:enrichmentAdmin,aliceId:(await enrichmentMember.session()).user.id,bobId:(await enrichmentAdmin.session()).user.id,storage:!!testStorage});
+      // D4 approval suite uses its own accounts so earlier limits and roles cannot mask failures.
+      const reviewAdmin=new Browser(),reviewSecond=new Browser(),reviewMember=new Browser();
+      for(const [browser,email] of [[reviewAdmin,"review-admin@example.test"],[reviewSecond,"review-second@example.test"],[reviewMember,"review-member@example.test"]] as const){assert.equal((await browser.requestLink(email)).status,200);await browser.verifyLastLink();}
+      const reviewSecondId=(await reviewSecond.session()).user.id;await db.query(`UPDATE "User" SET role='ADMIN' WHERE id=$1`,[reviewSecondId]);
+      await productReviewTests(t,{db,base,admin:reviewAdmin,second:reviewSecond,member:reviewMember,memberId:(await reviewMember.session()).user.id,adminId:(await reviewAdmin.session()).user.id});
       await t.test(
         "expired sessions and concurrent unique-username updates",
         async () => {
@@ -626,6 +644,12 @@ test(
           `Expired link status=${response.status} destination=${destination.pathname}`,
         );
         assert.equal((await expiredBrowser.session())?.user, undefined);
+        // Do not depend on earlier email requests staying in the same fixed 15-minute bucket.
+        const emailWindow=Math.floor(Date.now()/(15*60*1000));
+        for(const window of [emailWindow,emailWindow+1]){
+          const key=createHmac('sha256',env.AUTH_SECRET!).update(`email:alice@example.test:${window}`).digest('hex');
+          await db.query('INSERT INTO "RateLimit"(key,count,"expiresAt") VALUES($1,3,$2) ON CONFLICT(key) DO UPDATE SET count=3',[key,new Date((window+1)*15*60*1000)]);
+        }
         const count = mail.length;
         const denied = await alice.requestLink("alice@example.test");
         assert.equal(denied.status, 200);

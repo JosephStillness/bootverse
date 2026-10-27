@@ -41,9 +41,10 @@
     "@prisma/client": "7.10.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.4.0",
-    "next": "16.4.0",
+    "csv-parse": "7.0.3",
+    "next": "16.4.3",
     "next-auth": "5.0.0-beta.32",
-    "nodemailer": "10.1.0",
+    "nodemailer": "10.1.4",
     "pg": "^8.23.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
@@ -62,7 +63,7 @@
     "@types/smtp-server": "^3.5.13",
     "dotenv": "^18.0.7",
     "eslint": "^9",
-    "eslint-config-next": "16.4.0",
+    "eslint-config-next": "16.4.3",
     "fast-glob": "file:tooling/next-lint-glob",
     "prisma": "7.10.0",
     "smtp-server": "^3.19.21",
@@ -79,13 +80,16 @@
     "@auth/core": {
       "nodemailer": "$nodemailer"
     },
+    "smtp-server": {
+      "nodemailer": "$nodemailer"
+    },
     "@prisma/config": {
       "deepmerge-ts": "8.0.2"
     },
     "prisma": {
       "mysql2": "3.24.5"
     },
-    "@next/eslint-plugin-next@16.4.0": {
+    "@next/eslint-plugin-next@16.4.3": {
       "fast-glob": "$fast-glob"
     }
   }

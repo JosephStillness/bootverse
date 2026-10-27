@@ -1,3 +1,5 @@
+import {publicEnrichment} from "@/lib/enrichment/public-service";
+import {ProductGallery} from "@/components/product-gallery";
 import {ProductOffers} from "@/components/product-offers";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -40,7 +42,7 @@ export default async function BootDetail({
   await connection();
   const boot = await getProduct(slug);
   if (!boot) notFound();
-  const variants = await generationProducts(boot.generation.id);
+  const [variants,enrichment] = await Promise.all([generationProducts(boot.generation.id),publicEnrichment(boot.id)]);
   const surface = boot.variant.surface
     ? `${boot.variant.surface} · ${surfaceLabels[boot.variant.surface]}`
     : "Unknown surface";
@@ -65,7 +67,7 @@ export default async function BootDetail({
         </Suspense>
       </div>
       <div className="detail-layout">
-        <figure>
+        {enrichment.images.length?<ProductGallery images={enrichment.images}/>:<figure>
           {boot.sample?<BootArt
             eager
             sizes="(max-width: 767px) 100vw, 55vw"
@@ -74,7 +76,7 @@ export default async function BootDetail({
           <figcaption className="image-caption">
             {boot.sample?"Concept artwork. This image does not depict this configuration.":"Product photography has not been provided."}
           </figcaption>
-        </figure>
+        </figure>}
         <div className="detail-summary">
           <div className="detail-eyeline">
             <span>{boot.brand.name}</span>
@@ -87,7 +89,7 @@ export default async function BootDetail({
           <p className="detail-colorway">
             <span
               className="swatch"
-              style={{ backgroundColor: boot.colorway.swatch }}
+              style={{ backgroundColor: boot.colorway.swatch ?? undefined }}
               aria-hidden="true"
             />
             {boot.colorway.name}
@@ -146,7 +148,7 @@ export default async function BootDetail({
             >
               <span
                 className="swatch"
-                style={{ backgroundColor: entry.colorway.swatch }}
+                style={{ backgroundColor: entry.colorway.swatch ?? undefined }}
                 aria-hidden="true"
               />
               <span>
@@ -180,6 +182,10 @@ export default async function BootDetail({
             </div>
           ))}
         </dl>
+      </section>
+      <section className="detail-section" aria-labelledby="source-observations-heading">
+        <div><h2 id="source-observations-heading">Source observations</h2><p>Checked source claims, with measurement context. Manufacturer statements are not independent measurements or a guarantee of fit.</p></div>
+        {enrichment.attributes.length?<dl className="specification-list">{enrichment.attributes.map((a,i)=><div key={i}><dt>{a.attribute.replace(/([A-Z])/g,' $1')}</dt><dd><span>{a.value}</span><a href={a.sourceUrl} className="text-link" target="_blank" rel="noopener noreferrer">{a.sourceName} · {a.sourceType.toLowerCase()} · {a.basis.toLowerCase()}</a><span>Observed {a.observedAt.slice(0,10)} · checked {a.reviewedAt.slice(0,10)}</span></dd></div>)}</dl>:<p>No additional unambiguous, source-checked observations. Missing construction and fit properties remain unknown.</p>}
       </section>
       <section
         className="detail-section"

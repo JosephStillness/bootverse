@@ -4,7 +4,7 @@ import {manufacturerHosts,rules,ascending} from "./config";
 import type {Candidate,Evidence,Preferences,Provenance} from "./types";
 const surface=z.enum(["FG","AG","TF","SG","IN"]);
 const safeUrl=z.url().refine(v=>{try {const u=new URL(v);return u.protocol==="https:"&&!u.username&&!u.password&&!Array.from(u.searchParams.keys()).some(k=>/token|secret|signature|api.?key/i.test(k));} catch {return false;}},"Use a public HTTPS evidence URL.");
-const base={id:z.string().min(1).max(100),sourceKind:z.enum(["MANUFACTURER","RETAILER","MEASUREMENT","EDITORIAL","COMMUNITY"]),sourceUrl:safeUrl,observedAt:z.iso.datetime({offset:true}),validUntil:z.iso.datetime({offset:true})};
+const base={id:z.string().min(1).max(100),sourceKind:z.enum(["MANUFACTURER","RETAILER","MEASUREMENT","EDITORIAL","COMMUNITY"]),sourceUrl:safeUrl,observedAt:z.iso.datetime({offset:true}),validUntil:z.iso.datetime({offset:true}),countryCode:z.string().regex(/^[A-Z]{2}$/).nullable().optional()};
 const scope={entryId:z.string().min(1).max(100),size:z.string().regex(/^\d{1,2}(\.\d{1,2})?$/).nullable(),sizeSystem:z.enum(["UK","US","EU","CM"]).nullable()};
 export const evidenceSchema=z.discriminatedUnion("kind",[
  z.object({...base,kind:z.literal("SURFACE"),payload:z.object({outsole:surface,allowed:z.array(surface).max(5),denied:z.array(surface).max(5)}).strict()}),
@@ -25,6 +25,8 @@ export function usableEvidence(c:Candidate,asOf:number) {
  return c.evidence.map(parseEvidence).filter((e):e is Evidence=>!!e)
  .filter(e=>fresh(e,asOf,e.kind==="PRICE"?rules.priceMaxAgeDays:e.kind==="AVAILABILITY"?rules.inventoryMaxAgeDays:e.kind==="FIT"?rules.fitMaxAgeDays:rules.surfaceMaxAgeDays))
  .filter(e=>e.sourceKind!=="MANUFACTURER"||manufacturerSource(e,c))
+ // Finder currently has no country input. Never substitute regional offer evidence.
+ .filter(e=>!((e.kind==='PRICE'||e.kind==='AVAILABILITY')&&e.countryCode))
  .sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt)||ascending(a.id,b.id));
 }
 export function scopeMatches(scope:{entryId:string;size:string|null;sizeSystem:string|null},c:Candidate,p:Preferences) {

@@ -8,10 +8,12 @@ import {normalizeProfile} from '@/lib/recommendations/normalize';
 import {analyzeReviews} from '@/lib/recommendations/review-analysis';
 import type {Candidate} from '@/lib/recommendations/types';
 const boot=boots[0];
-const candidate:Candidate={variantId:boot.variant.id,generationId:boot.generation.id,generation:boot.generation.name,familyId:boot.family.id,family:boot.family.name,brandId:boot.brand.id,brand:boot.brand.name,tierId:boot.tier.id,tier:boot.tier.name,outsole:boot.variant.surface,entry:{id:boot.id,slug:boot.slug,colorwayId:boot.colorwayId,colorway:boot.colorway.name},sample:true,evidence:[]};
+const fixtureSurface=boot.variant.surface;
+if(fixtureSurface==='MG'||fixtureSurface==='OTHER')throw Error('This Finder fixture needs an explicitly supported outsole.');
+const candidate:Candidate={variantId:boot.variant.id,generationId:boot.generation.id,generation:boot.generation.name,familyId:boot.family.id,family:boot.family.name,brandId:boot.brand.id,brand:boot.brand.name,tierId:boot.tier.id,tier:boot.tier.name,outsole:fixtureSurface,entry:{id:boot.id,slug:boot.slug,colorwayId:boot.colorwayId,colorway:boot.colorway.name},sample:true,evidence:[]};
 const p=normalizeProfile({version:0,surface:'FG'});
 const ranked=recommend(p,[candidate],'2026-10-16T00:00:00Z').unverified[0];
-const result={...ranked,catalogue:{entryId:boot.id,slug:boot.slug,variantId:boot.variant.id,generationId:boot.generation.id,colorwayId:boot.colorwayId,brandId:boot.brand.id,tier:boot.tier.name,outsole:boot.variant.surface}};
+const result={...ranked,catalogue:{entryId:boot.id,slug:boot.slug,variantId:boot.variant.id,generationId:boot.generation.id,colorwayId:boot.colorwayId,brandId:boot.brand.id,tier:boot.tier.name,outsole:fixtureSurface}};
 describe('finder privacy and explainable presentation',()=>{
  it('lets guests discover the product without collecting private dimensions or pretending guest queries work',()=>{const html=renderToStaticMarkup(<BootFitFinder authenticated={false}/>);expect(html).toContain('Guest recommendation queries are not supported');expect(html).toContain('/login?callbackUrl=');expect(html).not.toContain('name="leftLengthMm"');expect(html).toContain('not guaranteed physical fit');});
  it('loads authenticated data through the private API rather than embedding a saved profile in initial HTML',()=>{const html=renderToStaticMarkup(<BootFitFinder authenticated/>);expect(html).toContain('Loading your private saved profile');expect(html).not.toContain('revision');});

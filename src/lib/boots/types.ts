@@ -1,7 +1,7 @@
-export const surfaces = ["FG", "AG", "SG", "TF"] as const;
+export const surfaces = ["FG", "AG", "SG", "TF", "IN", "MG", "OTHER"] as const;
 export type Surface = (typeof surfaces)[number];
 export type UnknownAttribute = { status: "unknown"; reason: string };
-export type ProductAttribute = UnknownAttribute | {status:"verified";value:string;sourceUrl:string;observedAt:string};
+export type ProductAttribute = UnknownAttribute | {status:"verified";value:string;sourceUrl:string;observedAt:string;legacy?:true;provenance?:{sourceName:string;sourceType:string;basis:string;reviewedAt:string}};
 export interface Brand {
   id: string;
   name: string;
@@ -30,7 +30,7 @@ export interface Colorway {
   id: string;
   generationId: string;
   name: string;
-  swatch: string;
+  swatch: string | null;
 }
 export interface BootEntry {
   id: string;
@@ -58,7 +58,7 @@ export interface BootData {
   entries: BootEntry[];
 }
 export interface CatalogueBoot extends BootEntry {
-  offers?:{amount:string;currency:string;size:string|null;sizeSystem:string|null;sourceUrl:string;observedAt:string}[];
+  offers?:{amount:string;currency:string;size:string|null;sizeSystem:string|null;sourceUrl:string;observedAt:string;countryCode?:string|null}[];
   brand: Brand;
   family: BootFamily;
   generation: ModelGeneration;

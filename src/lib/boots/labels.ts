@@ -4,6 +4,9 @@ export const surfaceLabels: Record<Surface, string> = {
   AG: "Artificial grass",
   SG: "Soft ground",
   TF: "Turf",
+  IN: "Indoor",
+  MG: "Multi-ground designation",
+  OTHER: "Other manufacturer designation",
 };
 
 // Supported preference choices; product records themselves come from PostgreSQL.

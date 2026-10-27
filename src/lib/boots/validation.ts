@@ -32,7 +32,7 @@ export function validateBootData(data: BootData): string[] {
   for (const colorway of data.colorways) {
     if (!has(data.generations, colorway.generationId))
       errors.push(`Unknown colorway generation: ${colorway.id}`);
-    if (!/^#[0-9a-f]{6}$/i.test(colorway.swatch))
+    if (colorway.swatch !== null && !/^#[0-9a-f]{6}$/i.test(colorway.swatch))
       errors.push(`Invalid swatch: ${colorway.id}`);
   }
   const slugs = new Set<string>();

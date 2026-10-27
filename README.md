@@ -36,6 +36,8 @@ Eight fictional sample entries remain available through the **explicit local see
 
 Identity: `Brand → Family → Generation → Tier → Outsole variant → Catalogue entry/colorway`. Reviews aggregate only an exact variant, not across tiers/outsoles/generations. See [catalogue architecture](docs/catalogue-and-comparison.md).
 
+Data D1 adds a source registry, manufacturer/region-scoped SKUs, validated source-backed claims, licensed image metadata and an audited draft/review/publication lifecycle. ADMIN-only APIs support manual curation; a full product editor and import pipeline are deferred. Legacy source/specification gaps stay explicit, and broader catalogue outsole labels do not relax Finder safety. See the [D1 schema, API and migration report](docs/DATA_D1_SCHEMA_SOURCE_REGISTRY_REPORT.md) before applying the two additive migrations. Never apply them to Neon automatically.
+
 ## Checks
 
 ```sh
@@ -71,4 +73,14 @@ See [Phase 4.1 staging architecture and approval gates](docs/PHASE4_1_STAGING_PL
 
 Repeatable browser regression setup and CLI requirements: [browser QA environment](docs/catalogue-and-comparison.md#reusable-browser-regression-environment). `npm run test:browser:serve` creates disposable local fixtures; it is never a production server or sample seed command for a real database.
 
+With an authenticated disposable QA ADMIN session, `BOOTVERSE_BROWSER_SESSION=your-session npm run test:browser -- data` checks D1 source/claim verification, public provenance, mobile/desktop wrapping and source revocation. It mutates only the `qa-product-0` fixture in that disposable environment; never run it against a real app database.
+
 Phase 4.2 database/storage verification: [report and approval requirements](docs/PHASE4_2_DATABASE_STORAGE_REPORT.md). After Prisma client generation, run `npm run db:verify -- --env-file /PRIVATE/PATH/database.env` from the project root. This command is read-only, requires explicit env selection, checks migration checksums/model tables/critical constraints/triggers and Prisma schema drift, and refuses mixed pooled/direct targets or unverified remote TLS. It never migrates, seeds or provisions. Use independent app/migrator credentials for an approved staging target; no remote initialization is authorized by the command.
+
+### Product data workspaces (D2 / D3)
+
+ADMIN-only `/admin/products/import` previews structured CSV/JSON and commits attributed drafts. `/admin/products/enrich` adds immutable observations and licensed asset metadata to exact existing products, detects contextual conflicts, displays quality/freshness issues and records audit history. No automatic publishing or arbitrary URL retrieval. Product photos reuse the private S3 upload pipeline; unknown image rights remain restricted. Real source access and licensing must be documented first; example fixtures are synthetic only.
+
+These workspaces enforce a localhost database guard. D2/D3 migrations are tested in disposable databases; they have **not** been applied to the existing development database or Neon. Run the isolated QA environment (`npm run test:browser:serve`) after a successful build and local PostgreSQL/S3 setup to explore them safely. Applying migrations to an existing database requires a separate target/backup/rehearsal review; never reset it.
+
+See [D2 import contracts and setup](docs/DATA_D2_IMPORT_PIPELINE_REPORT.md) and [D3 enrichment, verification, assets and tests](docs/DATA_D3_ENRICHMENT_REPORT.md). Limits/freshness settings are documented in `.env.example`; real credentials remain ignored. `BOOTVERSE_IMPORT_BENCHMARK=1 BOOTVERSE_BENCHMARK=1 npm run test:platform:local` runs synthetic measurements on owned temporary databases/buckets only.

@@ -13,5 +13,5 @@ import {parseEvidence,fresh} from '@/lib/recommendations/evidence';
 import {rules} from '@/lib/recommendations/config';
 export function productOffers(sample:boolean,entryId:string,rows:unknown[],asOf=new Date().toISOString()){
  if(sample||rows.length>32)return [];
- return rows.flatMap(row=>{const e=parseEvidence(row);return e?.kind==='PRICE'&&['MANUFACTURER','RETAILER'].includes(e.sourceKind)&&e.payload.entryId===entryId&&fresh(e,Date.parse(asOf),rules.priceMaxAgeDays)?[{...e.payload,sourceUrl:e.sourceUrl,observedAt:e.observedAt}]:[];}).slice(0,8);
+ return rows.flatMap(row=>{const e=parseEvidence(row);return e?.kind==='PRICE'&&['MANUFACTURER','RETAILER'].includes(e.sourceKind)&&e.payload.entryId===entryId&&fresh(e,Date.parse(asOf),rules.priceMaxAgeDays)?[{...e.payload,sourceUrl:e.sourceUrl,observedAt:e.observedAt,countryCode:e.countryCode??null}]:[];}).slice(0,8);
 }

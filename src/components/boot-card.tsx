@@ -38,7 +38,7 @@ export function BootCard({
             <span className="colorway-label">
               <span
                 className="swatch"
-                style={{ backgroundColor: boot.colorway.swatch }}
+                style={{ backgroundColor: boot.colorway.swatch ?? undefined }}
                 aria-hidden="true"
               />
               {boot.colorway.name}
