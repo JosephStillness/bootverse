@@ -25,7 +25,7 @@ export const reviewQuery = z.object({
   q: z.string().trim().max(100).default(""),
   status: z.enum(productStates).optional(),
   sourceId: dataId.optional(),
-  quality: z.enum(["conflicts", "missing_image", "missing_sku", "unknown_outsole", "staged_proposals"]).optional(),
+  quality: z.enum(["conflicts", "missing_image", "missing_sku", "unknown_outsole", "staged_proposals", "sync_changes"]).optional(),
   sort: z.enum(["submitted_desc", "submitted_asc", "created_desc", "updated_desc"]).default("submitted_desc"),
 }).strict();
 
@@ -65,3 +65,6 @@ export const bulkSchema = z.object({
   if (!v.confirmed || !v.reason || !v.requestId) ctx.addIssue({ code: "custom", message: "Bulk changes require explicit confirmation, a reason and a request ID." });
   if (v.items.some(i => !i.version || !i.reviewFingerprint)) ctx.addIssue({ code: "custom", message: "Preview the batch first; each item needs its reviewed version and fingerprint." });
 });
+
+// D5: decide a source-sync change inside the D4 review workflow.
+export const syncChangeSchema = z.object({ changeId: dataId, action: z.enum(["ACKNOWLEDGE", "DISMISS"]), reason, version, requestId: requestId.optional() }).strict();

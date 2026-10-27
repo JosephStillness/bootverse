@@ -19,7 +19,7 @@ const admin=new pg.Client({connectionString:url.href});
 let created=false,bucketCreated=false,db,smtp,mailbox,app,backend,bucket;
 try {
 await admin.connect();await admin.query(`CREATE DATABASE "${name}"`);created=true;url.pathname='/'+name;
-const env={...process.env,...local,DATABASE_URL:url.href,DATABASE_URL_UNPOOLED:url.href,AUTH_SECRET:randomBytes(48).toString('base64url'),AUTH_URL:'http://localhost:3100',EMAIL_SERVER:'smtp://127.0.0.1:1026',NODE_ENV:'production',NODE_OPTIONS:'--trace-deprecation'};
+const env={...process.env,...local,DATABASE_URL:url.href,DATABASE_URL_UNPOOLED:url.href,AUTH_SECRET:randomBytes(48).toString('base64url'),AUTH_URL:'http://localhost:3100',EMAIL_SERVER:'smtp://127.0.0.1:1026',NODE_ENV:'production',NODE_OPTIONS:'--trace-deprecation',SYNC_FIXTURES_ENABLED:'1',SYNC_FIXTURE_DIR:scratch};
 async function command(args){const p=spawn(process.execPath,args,{cwd,env:{...env,NODE_ENV:args.includes("scripts/import-catalogue.mts")?"test":env.NODE_ENV},stdio:'pipe'});p.stdout.resume();p.stderr.resume();const [code]=await once(p,'exit');if(code)throw Error('Local QA setup failed');}
 await command(['node_modules/prisma/build/index.js','migrate','deploy']);await command(['--import','tsx','scripts/import-catalogue.mts']);
 db=new pg.Client({connectionString:url.href});await db.connect();
@@ -35,6 +35,9 @@ for(let n=0;n<7;n++){
  const spec=n===0?{upper:{status:'verified',value:'Synthetic QA upper material',sourceUrl:'https://example.test/qa-specification',observedAt:'2026-10-17T00:00:00Z'}}:{};
  await db.query(`INSERT INTO "CatalogueEntry"(id,slug,"outsoleVariantId","colorwayId","generationId",sample,published,specifications) VALUES($1,$1,$2,'qa-color','qa-generation',false,true,$3::jsonb)`,['qa-product-'+n,'qa-variant-'+n,JSON.stringify(spec)]);
 }
+// D5 sync fixture: a documented synthetic feed that is not scheduled until an admin enables it.
+await db.query(`INSERT INTO "ProductSource"(id,name,type,"baseUrl","accessMethod","authorizationStatus","permissionNotes","permissionUrl","authorizationCheckedAt","checkedById","updatedAt","adapterKey","minIntervalMinutes","fieldPolicy") VALUES('qa-sync-source','Synthetic QA feed','PRODUCT_FEED','https://example.test','Synthetic fixture only','GRANTED','Synthetic browser QA feed; not live product data','https://example.test/fixture-policy',now(),'qa-moderator',now(),'fixture:qa-sync',5,'{"prices":"AUTO","availability":"RECORD"}')`);
+await writeFile(join(scratch,'qa-sync.json'),JSON.stringify({mode:'SNAPSHOT',records:[{kind:'product',recordId:'qa-sync-1',brand:'Synthetic QA sync brand',family:'Synthetic family',generation:'Gen 1',tier:'Elite',outsole:'FG',colorway:'Synthetic QA red',sku:'QA-SYNC-1',sourceUrl:'https://example.test/qa-sync/1',observedAt:new Date(Date.now()-3600000).toISOString()},{kind:'offer',recordId:'qa-sync-1',countryCode:'AU',currency:'AUD',price:'199.95',availability:'In stock',sourceUrl:'https://example.test/qa-sync/offer/1',observedAt:new Date(Date.now()-3600000).toISOString()}]}),{mode:0o600});
 // D4 approval fixtures: one reviewable draft and one with an unknown outsole (blocked).
 await db.query(`INSERT INTO "BootColorway"(id,"generationId",name,swatch) VALUES('qa-review-color','qa-generation','Synthetic QA green','#115533')`);
 await db.query(`INSERT INTO "BootVariant"(id,"tierModelId","generationId",surface) VALUES('qa-review-fg','qa-tier-pro','qa-generation','FG'),('qa-review-unknown','qa-tier-pro','qa-generation',NULL)`);

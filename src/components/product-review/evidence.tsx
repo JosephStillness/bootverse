@@ -23,6 +23,7 @@ export type ReviewData = {
   history: { id: string; kind: string; fromStatus: string | null; toStatus: string | null; reason: string; createdAt: string; actor: { name: string | null } | null }[];
   revisions: { id: string; revision: number; reason: string; createdAt: string; actor: string | null }[];
   sources: { id: string; name: string; type: string }[];
+  syncChanges: { id: string; kind: string; severity: string; disposition: string; attribute: string | null; previousValue: unknown; proposedValue: unknown; claimId: string | null; lastSeenAt: string; source: { name: string; type: string } }[];
 };
 
 const label = (attribute: string) => words(attribute.replace(/([A-Z])/g, '_$1'));
@@ -168,5 +169,33 @@ export function PreviewPanel({ data }: { data: ReviewData }) {
     <p>URL: /boots/{p.slug}</p>
     {p.attributes.length ? <dl className="review-facts">{p.attributes.map((a, n) => <div key={n}><dt>{label(a.attribute)}</dt><dd>{a.value} <span className="review-meta">{a.sourceName} · {words(a.sourceType)} · {a.basis === 'MEASURED' ? 'measured by the source; not independent certification' : 'source-reported, not independently tested'}</span></dd></div>)}</dl> : <p>No verified technical attributes; specifications show as unknown.</p>}
     <p>{p.images.length ? `${p.images.length} authorized image(s).` : 'Placeholder image.'}</p>
+  </section>;
+}
+
+/** D5: changes proposed by scheduled source sync. Evidence-backed ones resolve when the observation is decided above. */
+export function SyncChangesPanel({ data, onDone }: { data: ReviewData; onDone: (message: string) => void }) {
+  const [target, setTarget] = useState<{ id: string; action: 'ACKNOWLEDGE' | 'DISMISS' } | null>(null), [reason, setReason] = useState(''), [busy, setBusy] = useState(false), [error, setError] = useState(''), [requestId, setRequestId] = useState('');
+  const changes = data.syncChanges ?? [];
+  if (!changes.length) return null;
+  async function commit() {
+    if (!target) return;
+    setBusy(true); setError('');
+    try { await send(`/api/admin/product-reviews/${data.id}/sync-changes`, { changeId: target.id, action: target.action, reason, version: data.version, requestId }); setTarget(null); onDone(`Source change ${target.action === 'ACKNOWLEDGE' ? 'acknowledged' : 'dismissed'}.`); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Decision failed.'); } finally { setBusy(false); }
+  }
+  return <section className="import-panel" aria-labelledby="sync-heading">
+    <h2 id="sync-heading">Source changes</h2>
+    <p className="import-note">Proposed by scheduled synchronization. Specification changes are decided by verifying or rejecting the observation above; identity, SKU and image notices are acknowledged or dismissed here. Dismissed changes are not raised again.</p>
+    <ul className="review-dups">{changes.map(c => <li key={c.id} data-risk={c.disposition === 'PENDING_REVIEW' && c.severity === 'CRITICAL'}>
+      <strong>{words(c.kind)}</strong> · {words(c.severity)} · {words(c.disposition)}{c.attribute ? ` · ${c.attribute}` : ''}
+      <span className="review-meta">{c.source.name} · {words(c.source.type)} · last seen {date(c.lastSeenAt)}</span>
+      <span className="review-value">{c.previousValue === null ? '—' : showValue(c.previousValue)} → {c.proposedValue === null ? '—' : showValue(c.proposedValue)}</span>
+      {c.disposition === 'PENDING_REVIEW' && !c.claimId && <div className="account-actions"><Button type="button" variant="outline" onClick={() => { setTarget({ id: c.id, action: 'ACKNOWLEDGE' }); setReason(''); setRequestId(newRequestId()); }}>Acknowledge</Button><Button type="button" variant="outline" onClick={() => { setTarget({ id: c.id, action: 'DISMISS' }); setReason(''); setRequestId(newRequestId()); }}>Dismiss</Button></div>}
+    </li>)}</ul>
+    <ConfirmDialog open={!!target} title={target?.action === 'DISMISS' ? 'Dismiss this source change?' : 'Acknowledge this source change?'} confirmLabel={target?.action === 'DISMISS' ? 'Dismiss' : 'Acknowledge'} busy={busy} disabled={reason.trim().length < 10} onConfirm={commit} onClose={() => !busy && setTarget(null)}>
+      <p>{target?.action === 'DISMISS' ? 'The proposed value is ignored and will not be raised again for this source. No catalogue data changes.' : 'Records that you have handled this change (for example by editing the record). No catalogue data changes automatically.'}</p>
+      <ReasonField id="sync-reason" value={reason} onChange={setReason} />
+      {error && <p role="alert" className="import-error">{error}</p>}
+    </ConfirmDialog>
   </section>;
 }

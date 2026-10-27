@@ -96,6 +96,18 @@ export async function productMigrationTests(t: TestContext, localUrl: string) {
       await assert.rejects(db.query(`DELETE FROM "ProductReviewDecision" WHERE id='d4-note'`),/append-only/);
       await assert.rejects(db.query(`INSERT INTO "ProductReviewDecision"(id,"entryId","entryKey",kind,reason,"entryVersion","toStatus","fromStatus") VALUES('d4-bad',$1::text,$1::text,'APPROVE','Approval without fingerprint',1,'PUBLISHED','PENDING_REVIEW')`,[entry]),/check constraint/);
     });
+    await t.test('D5 sync expansion keeps every source and product unchanged and leaves synchronization disabled',async()=>{
+      const products=(await db.query('SELECT id,slug,status,published,version FROM "CatalogueEntry" ORDER BY id')).rows;
+      const sources=(await db.query('SELECT id,"authorizationStatus",status,version FROM "ProductSource" ORDER BY id')).rows;
+      await db.query(await readFile('prisma/migrations/20261027010000_source_sync/migration.sql','utf8'));
+      assert.deepEqual((await db.query('SELECT id,slug,status,published,version FROM "CatalogueEntry" ORDER BY id')).rows,products);
+      assert.deepEqual((await db.query('SELECT id,"authorizationStatus",status,version FROM "ProductSource" ORDER BY id')).rows,sources);
+      assert.equal((await db.query('SELECT count(*)::int n FROM "ProductSource" WHERE "syncEnabled"')).rows[0].n,0);
+      await assert.rejects(db.query(`UPDATE "ProductSource" SET "syncEnabled"=true WHERE id=$1`,[sources[0].id]),/check constraint/);
+      // The D4 decision log accepts the new SYNC_CHANGE kind and is still append-only.
+      await db.query(`INSERT INTO "ProductReviewDecision"(id,"entryId","entryKey",kind,reason,"entryVersion") VALUES('d5-sync',$1::text,$1::text,'SYNC_CHANGE','Synthetic migration sync decision',1)`,[products[0].id]);
+      await assert.rejects(db.query(`DELETE FROM "ProductReviewDecision" WHERE id='d5-sync'`),/append-only/);
+    });
   } finally {
     await db.end();
     if (created) await admin.query(`DROP DATABASE "${name}"`);

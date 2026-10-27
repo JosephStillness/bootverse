@@ -58,11 +58,12 @@ export async function loadFacts(tx: Tx, ids: string[], now = new Date()) {
     },
   });
   const variantIds = [...new Set(entries.map(e => e.outsoleVariantId))];
-  const [claims, duplicates, decisions, staged] = await Promise.all([
+  const [claims, duplicates, decisions, staged, syncChanges] = await Promise.all([
     tx.productClaim.findMany({ where: { OR: [{ entryId: { in: ids } }, { variantId: { in: variantIds } }] }, include: { source: claimSource }, orderBy: { id: "asc" }, take: ids.length * (LIMIT.claims + 1) }),
     duplicateCandidates(tx, ids),
     tx.productReviewDecision.findMany({ where: { entryId: { in: ids }, kind: "DUPLICATE_RESOLUTION" }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: ids.length * 20, select: { entryId: true, details: true } }),
     tx.productImportRow.findMany({ where: { entryId: { in: ids }, action: { in: ["STAGE", "QUARANTINE"] } }, select: { id: true, entryId: true }, orderBy: { id: "asc" }, take: ids.length * (LIMIT.staged + 1) }),
+    tx.sourceSyncChange.findMany({ where: { entryId: { in: ids }, disposition: "PENDING_REVIEW", kind: { not: "NEW_PRODUCT" } }, select: { id: true, entryId: true, kind: true, severity: true }, orderBy: { id: "asc" }, take: ids.length * (LIMIT.staged + 1) }),
   ]);
   const map = new Map<string, { facts: ReviewFacts; entry: typeof entries[number]; claims: typeof claims }>();
   for (const e of entries) {
@@ -86,7 +87,8 @@ export async function loadFacts(tx: Tx, ids: string[], now = new Date()) {
         duplicates: (duplicates.get(e.id) ?? []).slice(0, DUPLICATE_LIMIT),
         duplicateDecision: latest?.outcome ? { outcome: latest.outcome, candidateIds: latest.candidateIds ?? [] } : null,
         stagedProposals: rows.filter(r => !acknowledged.has(r.id)).length,
-        overflow: e.identifiers.length > LIMIT.identifiers || e.productImages.length > LIMIT.images || scoped.length > LIMIT.claims || rows.length > LIMIT.staged || (duplicates.get(e.id)?.length ?? 0) > DUPLICATE_LIMIT,
+        syncChanges: syncChanges.filter(c => c.entryId === e.id).slice(0, LIMIT.staged).map(({ id, kind, severity }) => ({ id, kind, severity })),
+        overflow: e.identifiers.length > LIMIT.identifiers || e.productImages.length > LIMIT.images || scoped.length > LIMIT.claims || rows.length > LIMIT.staged || syncChanges.filter(c => c.entryId === e.id).length > LIMIT.staged || (duplicates.get(e.id)?.length ?? 0) > DUPLICATE_LIMIT,
         now,
       },
     });

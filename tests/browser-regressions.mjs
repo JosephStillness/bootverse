@@ -249,3 +249,45 @@ export async function productReviewWorkflow(page,base='http://localhost:3100'){
  assert.equal((await page.request.get(base+'/boots/qa-review-draft')).status(),404);
  return 'PASS: queue filters/bulk preview, blocked identity, submit, attested approval, public visibility, revision, keyboard dialog, archive, 320/768/1024/1440 layouts';
 }
+
+export async function productSyncWorkflow(page,base='http://localhost:3100'){
+ // Owned disposable QA environment only; the feed is a local synthetic fixture.
+ assert.equal(new URL(base).origin,'http://localhost:3100');
+ const noOverflow=async()=>{for(const width of [320,768,1024,1440]){await page.setViewportSize({width,height:1000});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);}await page.setViewportSize({width:1440,height:1000});};
+ await page.setViewportSize({width:1440,height:1000});
+ await page.goto(base+'/admin/data-sources');
+ await page.getByRole('heading',{name:'Data sources.'}).waitFor();
+ await page.getByText('live synchronization is not active',{exact:false}).waitFor();
+ await page.getByRole('link',{name:'Synthetic QA feed',exact:true}).click();
+ await page.getByRole('heading',{name:'Synthetic QA feed',exact:true}).waitFor();
+ await page.getByText('Disabled',{exact:true}).first().waitFor();
+ // Manual run: confirmation dialog, then a real fixture sync.
+ await page.getByRole('button',{name:'Run sync now',exact:true}).click();
+ let dialog=page.getByRole('dialog');await dialog.waitFor();
+ await dialog.getByRole('button',{name:'Run sync',exact:true}).click();
+ await page.getByRole('heading',{name:'Run result: Succeeded'}).waitFor();
+ await page.getByText('1 new drafts',{exact:false}).waitFor();
+ await page.getByRole('cell',{name:/New product/}).first().waitFor();
+ await page.getByText('AUD 199.95',{exact:false}).waitFor();
+ // Provider minimum interval now blocks another manual fetch, and the UI says why.
+ assert.equal(await page.getByRole('button',{name:'Preview changes',exact:true}).isDisabled(),true);
+ await page.getByText('Provider minimum interval has not elapsed',{exact:false}).first().waitFor();
+ // Enable the schedule with an audited reason.
+ await page.getByRole('checkbox',{name:'Scheduled synchronization enabled'}).check();
+ await page.getByLabel('Reason (recorded in audit history)').fill('Synthetic browser QA schedule only.');
+ await page.getByRole('button',{name:'Save settings',exact:true}).click();
+ await page.getByText('Synchronization settings saved and audited.',{exact:true}).waitFor();
+ await noOverflow();
+ await page.screenshot({path:'output/playwright/d5-source-detail-desktop.png',fullPage:true});
+ await page.setViewportSize({width:375,height:900});await page.screenshot({path:'output/playwright/d5-source-detail-mobile.png',fullPage:true});await page.setViewportSize({width:1440,height:1000});
+ // The approval queue opens pre-filtered to source changes; the new draft is private.
+ await page.getByRole('link',{name:'Approval queue',exact:true}).click();
+ await page.getByRole('heading',{name:'Approval queue.'}).waitFor();
+ assert.equal(await page.getByRole('button',{name:/^Pending source changes/}).getAttribute('aria-pressed'),'true');
+ assert.equal((await page.request.get(base+'/api/boots?q=Synthetic%20QA%20sync')).ok(),true);
+ assert.equal((await (await page.request.get(base+'/api/boots?q=Synthetic%20QA%20sync')).json()).total,0);
+ await page.goto(base+'/admin/data-sources');await page.getByRole('heading',{name:'Data sources.'}).waitFor();
+ await noOverflow();
+ await page.screenshot({path:'output/playwright/d5-sources-desktop.png',fullPage:true});
+ return 'PASS: source list/detail, confirmed manual fixture sync, draft-only new product, offer display, min-interval enforcement, audited schedule enablement, D4 deep link, 320/768/1024/1440 layouts';
+}

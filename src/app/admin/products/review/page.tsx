@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/accounts/service";
 import { ReviewQueue } from "@/components/product-review/queue";
 export const metadata = { title: "Product approval queue", robots: { index: false, follow: false } };
-export default async function ReviewQueuePage() {
+export default async function ReviewQueuePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const { quality } = await searchParams;
   await connection();
   const actor = await currentUser();
   if (!actor) redirect("/login?callbackUrl=%2Fadmin%2Fproducts%2Freview");
@@ -16,6 +17,6 @@ export default async function ReviewQueuePage() {
     <p className="eyebrow">PRODUCT DATA · D4</p>
     <h1>Approval queue.</h1>
     <p className="import-intro">Every public boot record is identified, checked against its evidence and approved by an administrator. Nothing is published automatically.</p>
-    <ReviewQueue />
+    <ReviewQueue quality={typeof quality === 'string' ? quality : undefined} />
   </div>;
 }

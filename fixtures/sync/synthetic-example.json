@@ -1,0 +1,10 @@
+{
+  "_comment": "Synthetic local test fixture only. Not real products, prices or stock. Used with SYNC_FIXTURES_ENABLED=1 and adapter key fixture:synthetic-example.",
+  "mode": "SNAPSHOT",
+  "records": [
+    { "kind": "product", "recordId": "synthetic-example-1", "brand": "Synthetic Example Brand", "family": "Synthetic Family", "generation": "Gen 1", "tier": "Elite", "outsole": "FG", "colorway": "Synthetic Blue", "sku": "SYN-EXAMPLE-1", "sourceUrl": "https://example.test/products/1", "observedAt": "2026-10-01T00:00:00Z", "specifications": [{ "attribute": "upperMaterial", "value": "Synthetic knit", "basis": "REPORTED" }] },
+    { "kind": "product", "recordId": "synthetic-example-2", "brand": "Synthetic Example Brand", "family": "Synthetic Family", "generation": "Gen 1", "tier": "Pro", "outsole": "AG", "colorway": "Synthetic Blue", "sku": "SYN-EXAMPLE-2", "sourceUrl": "https://example.test/products/2", "observedAt": "2026-10-01T00:00:00Z" },
+    { "kind": "offer", "recordId": "synthetic-example-1", "countryCode": "AU", "currency": "AUD", "price": "199.95", "availability": "In stock", "sourceUrl": "https://example.test/offers/1", "observedAt": "2026-10-01T00:00:00Z" },
+    { "kind": "offer", "recordId": "synthetic-example-2", "countryCode": "AU", "currency": "AUD", "price": "149.00", "availability": "Pre-order", "sourceUrl": "https://example.test/offers/2", "observedAt": "2026-10-01T00:00:00Z" }
+  ]
+}
